@@ -399,7 +399,7 @@
         let path, bundled, version, problem;
         try {
           ({ path, bundled } = await call("cli_status"));
-          ({ version } = await gitfolio("version"));
+          ({ version } = await gitfolio("version").then((v) => ({ version: v.release || v.version })));
         } catch (e) {
           problem = e; // one installed on its own, too old (cliTooOld): the app can still be removed
         }
@@ -464,7 +464,7 @@
                 box.replaceChildren(
                   el("p", "", t("GitFolio needs two things on this computer, installed in this order.")),
                   need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found, el("p", "dim", t("git was not found on this computer.")), fresh(git)),
-                  need(2, `gitfolio ${ver.version}`, t(cli.bundled
+                  need(2, `gitfolio ${ver.release || ver.version}`, t(cli.bundled
                     ? "Collects your commits in the background when you push, through git hooks. It comes with GitFolio."
                     : "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used."),
                   cli.installed, git.found ? "" : el("p", "dim", t("Install git first.")), fresh(ver)),
