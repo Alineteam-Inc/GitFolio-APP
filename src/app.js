@@ -203,7 +203,7 @@ function drawStats({ type: d, saved, fetchedAt }) {
       const fill = el("div", "");
       fill.style.width = `${v ?? 0}%`;
       return el("div", "score", el("span", "", t(title(k))), el("div", "bar", fill),
-        el("span", "", String(v ?? "-")), el("span", "dim", ai == null ? "" : `AI ${ai}`));
+        el("span", "num", String(v ?? "-")), el("span", "dim", ai == null ? "" : "AI"), el("span", "num dim", ai == null ? "" : String(ai)));
     }),
     el("p", "dim", saved ? t("Saved {date}", { date: fetchedAt.slice(0, 10) }) : ""),
   ];
@@ -249,7 +249,8 @@ function drawStack(u, top = 6) {
         icon ? Object.assign(el("img", ""), { src: `icons/tech/${icon}.svg`, alt: "" })
           : el("span", "letters", (words.length > 1 ? words.map((w) => w[0]).join("") : x.name).slice(0, 3)));
       tile.dataset.name = [x.name, months(x.careerMonths), x.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
-      tile.ariaLabel = tile.dataset.name;
+      // The system's own tooltip: its window may go past the tray window's edge, where a page's cannot.
+      tile.title = tile.ariaLabel = tile.dataset.name;
       return tile;
     })),
   ]);

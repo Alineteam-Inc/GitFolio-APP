@@ -37,9 +37,9 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 /* A page's own buttons: on the right, the main one last, as macOS dialogs have them. */
 .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 /* The scores: one line each, of one height, evenly spaced: the AI column wide enough for "AI 100", no word folds. */
-.score { display: grid; grid-template-columns: 13ch 1fr 3ch 6ch; gap: 8px; align-items: center; height: 22px; }
+.score { display: grid; grid-template-columns: 13ch 1fr 3ch 2ch 3ch; gap: 6px; align-items: center; height: 22px; }
 .score span { white-space: nowrap; }
-.score span:nth-child(n + 3) { text-align: right; }
+.score .num { text-align: right; } /* scores at the right, so their digits line up; "AI" in a column of its own */
 .bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 0.2); }
 .bar div { height: 100%; border-radius: 3px; background: #0a84ff; }
 /* A list of one-line items: words and small badges, buttons at the end, all level. */
@@ -58,8 +58,6 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .tech img { width: 20px; height: 20px; }
 .tech .letters { font-size: 10px; font-weight: bold; }
 .tech.hidden { opacity: 0.4; }
-.tech:hover::after { content: attr(data-name); position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 1;
-  white-space: nowrap; font-size: 11px; padding: 2px 6px; border-radius: 4px; background: Canvas; color: CanvasText; border: 1px solid rgb(127 127 127 / 0.4); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { padding: 2px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
 .chip.hidden { opacity: 0.5; }
