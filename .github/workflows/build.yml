@@ -1,0 +1,145 @@
+name: build
+
+# GitFolio runs on macOS, Linux and Windows, so every change is built on all three, bundled as each system
+# installs it, with the gitfolio CLI it carries; then each package is installed and started. release.yml
+# runs this with the CLI release the app ships.
+on:
+  push:
+    branches: [main, stage]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      cli-ref:
+        description: GitFolio-CLI tag to bundle (vX.Y.Z), built as that release
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, target: aarch64-apple-darwin, bundles: dmg, name: macos_arm64 }
+          - { os: macos-latest, target: x86_64-apple-darwin, bundles: dmg, name: macos_x64 }
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, bundles: "deb,rpm", name: linux_amd64 } # the oldest glibc
+          - { os: ubuntu-22.04-arm, target: aarch64-unknown-linux-gnu, bundles: "deb,rpm", name: linux_arm64 }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, bundles: nsis, name: windows_x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # The CLI: a release's tag, or else its dev branch, built from source as such (its own version).
+      - uses: actions/checkout@v7
+        with:
+          repository: Alineteam-Inc/GitFolio-CLI
+          ref: ${{ inputs.cli-ref || 'stage' }}
+          path: cli
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: cli/go.mod
+          cache: false
+      - name: gitfolio CLI
+        shell: bash
+        env:
+          CLI_REF: ${{ inputs.cli-ref }}
+        run: |
+          version=${CLI_REF#v}
+          case $version in
+          "") ;; # a dev build
+          *[!0-9.]* | *..* | .* | *.) echo "::error::not a release version: $CLI_REF"; exit 1 ;;
+          esac
+          sh scripts/build-cli.sh cli HEAD "$version" ${{ matrix.target }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+      - name: Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Test
+        if: matrix.name != 'macos_x64' # built across, not run here
+        working-directory: src-tauri
+        run: cargo test --target ${{ matrix.target }}
+
+      # Each package under a name without the version, so the README can link to releases/latest/download/<name>.
+      - name: Bundle
+        shell: bash
+        run: |
+          npm run tauri build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+          b=src-tauri/target/${{ matrix.target }}/release/bundle
+          mkdir dist
+          case ${{ matrix.name }} in
+          macos_*) cp $b/dmg/*.dmg dist/GitFolio_${{ matrix.name }}.dmg ;;
+          linux_*) cp $b/deb/*.deb dist/GitFolio_${{ matrix.name }}.deb && cp $b/rpm/*.rpm dist/GitFolio_${{ matrix.name }}.rpm ;;
+          windows_*) cp $b/nsis/*-setup.exe dist/GitFolio_${{ matrix.name }}-setup.exe ;;
+          esac
+          ls -l dist
+
+      # Installed as a user would, then started: the setup window opens by itself, its picture kept.
+      - name: Install and start (macOS)
+        if: matrix.name == 'macos_arm64'
+        run: |
+          hdiutil attach dist/*.dmg -nobrowse -mountpoint /tmp/gitfolio
+          /tmp/gitfolio/GitFolio.app/Contents/MacOS/gitfolio version --json
+          hdiutil detach /tmp/gitfolio
+      - name: Install and start (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          dpkg-deb -f dist/*.deb Package Version Depends
+          sudo apt-get install -y ./dist/*.deb xvfb imagemagick
+          gitfolio version --json
+          app=$(dpkg -L "$(dpkg-deb -f dist/*.deb Package)" | grep '^/usr/bin/' | grep -v '/gitfolio$')
+          mkdir shots
+          xvfb-run -a -s '-screen 0 1280x800x24' sh -c "$app & sleep 20; import -window root shots/${{ matrix.name }}.png; kill \$!" ||
+            echo "::warning::no screenshot"
+      - name: Install and start (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Start-Process (Get-Item dist/*-setup.exe).FullName -ArgumentList '/S' -Wait
+          $dir = Join-Path $env:LOCALAPPDATA 'GitFolio'
+          $path = { (Get-Item 'HKCU:\Environment').GetValue('Path', '', 'DoNotExpandEnvironmentNames') -split ';' }
+          if ((& $path) -notcontains $dir) { throw "the installer did not put $dir on PATH" }
+          & (Join-Path $dir 'gitfolio.exe') version --json
+          $app = Start-Process (Get-ChildItem $dir -Filter *.exe | Where-Object Name -notin 'gitfolio.exe', 'uninstall.exe').FullName -PassThru
+          Start-Sleep 20
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $img = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($img).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            New-Item -ItemType Directory shots | Out-Null
+            $img.Save("shots/${{ matrix.name }}.png")
+          } catch { Write-Warning "no screenshot: $_" }
+          Stop-Process $app.Id
+          Start-Sleep 3 # its web view goes with it
+          Start-Process (Join-Path $dir 'uninstall.exe') -ArgumentList '/S', "_?=$dir" -Wait
+          if ((& $path) -contains $dir) { throw "the uninstaller left $dir on PATH" }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: packages-${{ matrix.name }}
+          path: dist/*
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots-${{ matrix.name }}
+          path: shots/*
+          if-no-files-found: ignore

@@ -40,6 +40,12 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Alineteam Inc.",
+    "copyright": "© 2026 Alineteam Inc.",
+    "homepage": "https://aline.team",
+    "license": "Apache-2.0",
+    "category": "DeveloperTool",
+    "shortDescription": "Your git history, turned into a verified developer portfolio",
     "externalBin": [
       "binaries/gitfolio"
     ],

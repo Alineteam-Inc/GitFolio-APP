@@ -1,0 +1,54 @@
+name: release
+
+# Push a tag like v0.1.0 (the version in src-tauri/tauri.conf.json) on main: the packages are built and
+# started on each system (build.yml), with the gitfolio CLI release below, and published.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Release only from main # stage is the dev branch; the packages follow main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
+      - name: The tag is the app's version
+        run: |
+          v=$(jq -r .version src-tauri/tauri.conf.json)
+          [ "$GITHUB_REF_NAME" = "v$v" ] || { echo "::error::tag $GITHUB_REF_NAME, but tauri.conf.json says $v"; exit 1; }
+
+  build:
+    needs: check
+    uses: ./.github/workflows/build.yml
+    with:
+      cli-ref: v0.6.0 # the gitfolio CLI release the app ships
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+      id-token: write # sign the build provenance (Sigstore)
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: packages-*
+          path: dist
+          merge-multiple: true
+      - run: cd dist && sha256sum * > checksums.txt && cat checksums.txt
+      # Signed proof that each package was built here from this tag's source; users check it with
+      # gh attestation verify <package> -R Alineteam-Inc/GitFolio-GUI (README).
+      - uses: actions/attest@v4
+        with:
+          subject-checksums: dist/checksums.txt
+      - run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "GitFolio $GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
