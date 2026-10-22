@@ -490,11 +490,16 @@
         } catch (e) {
           problem = e; // one installed on its own, too old (cliTooOld): the app can still be removed
         }
+        // The app removes itself on macOS; elsewhere the system does (the installer, the package manager),
+        // after GitFolio cleaned up here.
+        const mac = navigator.userAgent.includes("Mac");
+        const elsewhere = mac ? "" : el("p", "", t(navigator.userAgent.includes("Windows")
+          ? "Then remove the app itself in Settings › Apps › Installed apps." : "Then remove the app itself with your package manager."));
         const purge = checkbox(), result = el("section", "");
         async function uninstall() {
           try {
             const r = JSON.parse(await call("uninstall", { purge: purge.checked }));
-            result.replaceChildren(el("p", "", t("GitFolio was removed.")),
+            result.replaceChildren(el("p", "", t(mac ? "GitFolio was removed." : "GitFolio's hooks, daily sync and sign-in were removed.")), elsewhere,
               drawFailures((r.repositories ?? []).filter((x) => x.error).map((x) => ({ name: x.path, error: x.error }))),
               el("div", "row", button(t("Quit"), () => call("quit"))));
           } catch (e) {
@@ -507,12 +512,14 @@
             el("div", "dim sub", `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`)),
           el("h2", "", t("Uninstall")),
           el("p", "", t(bundled
-            ? "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app."
-            : "Removes the app. The gitfolio installed on its own stays, with its hooks and settings.")),
+            ? mac ? "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app."
+              : "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in."
+            : mac ? "Removes the app. The gitfolio installed on its own stays, with its hooks and settings." : "The gitfolio installed on its own stays, with its hooks and settings.")),
+          bundled ? "" : elsewhere,
           el("p", "dim", t("Your data on aline.team stays.")),
           bundled ? label(purge, t("Also delete the commits collected on this computer")) : "",
           result,
-          el("div", "actions", button(t("Uninstall GitFolio"), uninstall)));
+          bundled || mac ? el("div", "actions", button(t("Uninstall GitFolio"), uninstall)) : "");
       }
 
       // The first-time setup, as an installer goes: the welcome and the data policy, what GitFolio needs,
