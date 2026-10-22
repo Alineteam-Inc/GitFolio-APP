@@ -135,9 +135,9 @@ fn cli() -> Result<(PathBuf, bool), String> {
 }
 
 /// Where the bundled gitfolio is linked for git hooks to find it: ~/.local/bin, in their list and
-/// needing no admin.
-// ponytail: macOS; Linux .deb has it in /usr/bin already, an AppImage needs a copy (its files go with
-// it on quit), and Windows needs its folder on PATH: with their packaging.
+/// needing no admin. Needed on macOS only: Linux packages put it in /usr/bin, and the Windows installer
+/// puts its folder on PATH (windows/hooks.nsh).
+// ponytail: no AppImage, whose files go with it on quit: it would need a copy here, kept up to date.
 #[cfg(unix)]
 fn link_path() -> Option<PathBuf> {
     std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/bin").join(CLI_NAME))
@@ -266,15 +266,12 @@ fn may_link() -> bool {
 }
 
 /// The gitfolio in use (see find_cli), for the windows: its path, whether it is the bundled one, and
-/// whether git hooks find it, which the bundled one does once installed (see install_cli).
+/// whether git hooks find it: in a folder of theirs (Linux packages), or linked there (see install_cli).
+/// On Windows its installer saw to it, on a PATH this app may have started too early to see.
 #[tauri::command]
 fn cli_status() -> Result<serde_json::Value, String> {
     let (path, bundled) = cli()?;
-    #[cfg(unix)]
-    let installed = !bundled || link_path().is_some_and(|at| same(&at, &path));
-    // ponytail: Windows puts the CLI's folder on PATH with its installer, to come with its packaging.
-    #[cfg(not(unix))]
-    let installed = true;
+    let installed = !bundled || cfg!(windows) || hook_dirs().iter().any(|d| same(&d.join(CLI_NAME), &path));
     Ok(serde_json::json!({"path": path, "bundled": bundled, "installed": installed}))
 }
 
