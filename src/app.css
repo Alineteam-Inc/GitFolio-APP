@@ -18,6 +18,10 @@ button:active { background: rgb(127 127 127 / 0.3); }
 button:disabled { opacity: 0.5; }
 /* Fields look like fields, apart from buttons: the system's field colors and a clear border. */
 input, textarea, select { font: inherit; color: FieldText; background: Field; border: 1px solid rgb(127 127 127 / 0.6); border-radius: 6px; padding: 5px 8px; }
+/* Fields and choices as tall as buttons. A choice draws its own ⌄: the system's ignores the height. */
+input:not([type="checkbox"]):not([type="radio"]), select { height: 28px; box-sizing: border-box; }
+select { -webkit-appearance: none; appearance: none; padding-right: 26px;
+  background: Field url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='gray' stroke-width='1.5'/></svg>") no-repeat right 9px center; }
 input:focus, textarea:focus, select:focus { outline: 2px solid #0a84ff; outline-offset: -1px; }
 input[type="checkbox"], input[type="radio"] { padding: 0; }
 textarea { width: 100%; box-sizing: border-box; }
@@ -33,6 +37,7 @@ th { font-weight: normal; opacity: 0.6; }
 .ok { color: #2a2; }
 p > button { margin-left: 8px; } /* the button that solves an error, after its words */
 .pre { white-space: pre-wrap; }
+.sub { margin-top: 6px; } /* a second line under a first, apart from it */
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
 /* A page's own buttons: on the right, the main one last, as macOS dialogs have them. */
 .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }

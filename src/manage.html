@@ -223,6 +223,7 @@
         const save = () => gitfolio("deps", "review", r.path, ...boxes.flatMap(([f, c]) => (c.checked ? ["--allow", f.path] : [])));
         return el("section", "",
           el("h2", "", r.name),
+          boxes.length > 1 ? bulk(boxes) : "",
           ...boxes.map(([f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", ` · ${t("new")}`) : "")),
           r.files.length
             ? el("div", "row", button(t("Save"), () => act(msg, save, () => { msg.textContent = t("Saved."); })))
@@ -370,8 +371,8 @@
           el("h1", "", t("Privacy")),
           el("h2", "", t("Blocked words")),
           el("p", "dim", t("Replaced in everything collected, what is stored already too.")),
-          el("div", "chips", ...(cfg.mask ?? []).map((w) => el("span", "chip", w, " ", button("×", () => config("mask", "rm", w))))),
           el("div", "row", word, button(t("Add"), () => config("mask", "add", word.value.trim()))),
+          el("div", "chips", ...(cfg.mask ?? []).map((w) => el("span", "chip", w, " ", button("×", () => config("mask", "rm", w))))),
           el("h2", "", t("Git commands GitFolio runs")),
           label(record, t("Keep git's own record of them"), el("div", "dim", t("Turning it off deletes the record."))),
           el("div", "row", button(t("Show them"), () => showHistory()), button(t("Show every run kept"), () => showHistory("--all"))),
@@ -431,7 +432,7 @@
         main.replaceChildren(
           el("h1", "", t("About")),
           problem ? el("p", "", ...drawError(problem)) : el("p", "", `gitfolio ${version}`,
-            el("div", "dim", `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`)),
+            el("div", "dim sub", `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`)),
           el("h2", "", t("Uninstall")),
           el("p", "", t(bundled
             ? "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app."
