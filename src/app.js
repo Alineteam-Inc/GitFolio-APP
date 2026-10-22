@@ -274,13 +274,23 @@ function drawScan(r) {
   ];
 }
 
+// Repositories aline.team takes only once an email is verified ({namespace, email}): per email, in a box
+// that scrolls when long, with the way to verify it.
+function drawWaiting(waiting) {
+  const by = new Map();
+  for (const w of waiting) by.set(w.email, [...(by.get(w.email) ?? []), w.namespace]);
+  return [...by].map(([email, names]) => el("div", "",
+    el("p", "", t("These are sent once {email} is verified:", { email }), button(t("Account"), () => goTo("account"))),
+    el("div", "scroll", el("p", "dim", names.join(", ")))));
+}
+
 // gitfolio sync --json, in a sentence or a few.
 function drawSync(r) {
   const sent = [["{n} commits", r.commits], ["{n} deleted", r.deleted], ["{n} moved", r.moved], ["{n} dependency updates", r.deps]]
     .filter(([, n]) => n > 0).map(([what, n]) => t(what, { n }));
   return [
     el("p", "", sent.length ? t("Sent {what}.", { what: sent.join(", ") }) : t("Nothing new to send.")),
-    ...(r.waiting ?? []).map((w) => el("p", "dim", t("{namespace} waits until {email} is verified (Account).", w))),
+    ...drawWaiting(r.waiting ?? []),
     drawFailures(r.failed ?? []),
   ];
 }

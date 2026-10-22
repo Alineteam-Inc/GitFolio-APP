@@ -1,5 +1,6 @@
 use std::{
     fs,
+    sync::Mutex,
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -23,6 +24,20 @@ const NEAR_TRAY: Position = Position::TrayBottomCenter;
 
 const CLI_NAME: &str = if cfg!(windows) { "gitfolio.exe" } else { "gitfolio" };
 
+/// The app's language as the user set it in General: "" to follow the device, else ko, en or ja.
+static LANG: Mutex<String> = Mutex::new(String::new());
+
+/// A gitfolio run, in the app's language when the user set one (GITFOLIO_LANG, which gitfolio takes
+/// before the device's): gitfolio works the language out, so the app's words and its own match.
+fn gitfolio_cmd(cli: &Path) -> Command {
+    let mut cmd = Command::new(cli);
+    let lang = LANG.lock().unwrap().clone();
+    if !lang.is_empty() {
+        cmd.env("GITFOLIO_LANG", lang);
+    }
+    cmd
+}
+
 /// The oldest gitfolio this app works with: the one with --json, version --json and uninstall.
 const MIN_CLI: [u32; 3] = [0, 6, 0];
 
@@ -44,14 +59,14 @@ fn hook_dirs() -> Vec<PathBuf> {
 /// What `gitfolio version --json` says: its version and whether an app bundles it. None from a
 /// gitfolio older than 0.6.0, which has no --json.
 fn version_of(cli: &Path) -> Option<(String, bool)> {
-    let out = Command::new(cli).args(["version", "--json"]).output().ok()?;
+    let out = gitfolio_cmd(cli).args(["version", "--json"]).output().ok()?;
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
     Some((v["version"].as_str()?.to_string(), v["bundled"].as_bool()?))
 }
 
 /// The screen language gitfolio works out from the device (version --json "lang": en, ko or ja).
 fn lang_of(cli: &Path) -> String {
-    let out = Command::new(cli).args(["version", "--json"]).output().ok();
+    let out = gitfolio_cmd(cli).args(["version", "--json"]).output().ok();
     let v: Option<serde_json::Value> = out.and_then(|o| serde_json::from_slice(&o.stdout).ok());
     v.and_then(|v| v["lang"].as_str().map(str::to_string)).unwrap_or_else(|| "en".into())
 }
@@ -63,6 +78,16 @@ fn menu_words(lang: &str) -> [&'static str; 3] {
         "ja" => ["GitFolioを開く", "GitFolioをアンインストール…", "終了"],
         _ => ["Open GitFolio", "Uninstall GitFolio…", "Quit"],
     }
+}
+
+/// The tray menu, in gitfolio's language: Linux sends no tray click events, so it is the way to the
+/// windows there.
+fn tray_menu<R: Runtime, M: Manager<R>>(app: &M) -> tauri::Result<Menu<R>> {
+    let [open, uninstall, quit] = menu_words(&cli().map(|(cli, _)| lang_of(&cli)).unwrap_or_default());
+    let open = MenuItem::with_id(app, "open", open, true, None::<&str>)?;
+    let uninstall = MenuItem::with_id(app, "uninstall", uninstall, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", quit, true, None::<&str>)?;
+    Menu::with_items(app, &[&open, &uninstall, &quit])
 }
 
 /// "dev" (a build from source) or at least MIN_CLI.
@@ -152,7 +177,7 @@ type Progress = Option<(AppHandle, String)>;
 /// Of what goes to stderr, the progress lines ({"progress": ...}) go to `progress`; the lines for
 /// people only make the error when stdout has none.
 fn run_cli(cli: &Path, args: &[&str], progress: Progress) -> Result<String, String> {
-    let mut child = Command::new(cli)
+    let mut child = gitfolio_cmd(cli)
         .args(args)
         .arg("--json")
         .stdin(Stdio::null())
@@ -340,6 +365,32 @@ async fn uninstall(purge: bool) -> Result<String, String> {
     Ok(done)
 }
 
+/// The app's language as set in General ("" follows the device).
+#[tauri::command]
+fn language() -> String {
+    LANG.lock().unwrap().clone()
+}
+
+/// Sets the app's language (General; "" follows the device): kept in the app's config folder, given to
+/// every gitfolio run from now on, the tray menu remade in it and the windows told to redraw.
+#[tauri::command]
+fn set_language(app: AppHandle, lang: String) -> Result<(), String> {
+    if !["", "ko", "en", "ja"].contains(&lang.as_str()) {
+        return Err(format!("not a language of GitFolio: {lang}"));
+    }
+    let file = app.path().app_config_dir().map_err(|e| e.to_string())?.join("language");
+    if lang.is_empty() {
+        let _ = fs::remove_file(&file);
+    } else {
+        fs::create_dir_all(file.parent().unwrap_or(&file)).and_then(|_| fs::write(&file, &lang)).map_err(|e| e.to_string())?;
+    }
+    *LANG.lock().unwrap() = lang;
+    if let Some(tray) = app.tray_by_id("tray") {
+        tray.set_menu(Some(tray_menu(&app).map_err(|e| e.to_string())?)).map_err(|e| e.to_string())?;
+    }
+    app.emit("language", ()).map_err(|e| e.to_string())
+}
+
 /// Whether the app starts with the computer (General).
 #[tauri::command]
 fn autostart(app: AppHandle) -> Result<bool, String> {
@@ -448,15 +499,13 @@ pub fn run() {
                 }
             });
 
-            // Linux sends no tray click events, so the menu is the way to the windows there.
-            let [open, uninstall, quit] = menu_words(&cli().map(|(cli, _)| lang_of(&cli)).unwrap_or_default());
-            let open = MenuItem::with_id(app, "open", open, true, None::<&str>)?;
-            let uninstall = MenuItem::with_id(app, "uninstall", uninstall, true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", quit, true, None::<&str>)?;
-            TrayIconBuilder::new()
+            // The language set in General, kept in the app's config folder.
+            *LANG.lock().unwrap() = fs::read_to_string(app.path().app_config_dir()?.join("language")).unwrap_or_default();
+
+            TrayIconBuilder::with_id("tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("GitFolio")
-                .menu(&Menu::with_items(app, &[&open, &uninstall, &quit])?)
+                .menu(&tray_menu(app)?)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => {
@@ -489,7 +538,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, autostart, set_autostart, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

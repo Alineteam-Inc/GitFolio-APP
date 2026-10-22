@@ -79,6 +79,7 @@
         icon("settings", t("Settings"), () => open("overview"));
         icon("quit", t("Quit"), () => call("quit"));
       });
+      window.__TAURI__.event.listen("language", () => location.reload()); // set in General
       // Once on the first open, then once a day: stats and stack may ask aline.team.
       window.addEventListener("focus", () => load(false), { once: true });
       setInterval(() => load(true, true), 24 * 60 * 60 * 1000);

@@ -17,8 +17,8 @@ button { font: inherit; height: 28px; min-width: 88px; padding: 0 14px; border: 
 button:active { background: rgb(127 127 127 / 0.3); }
 button:disabled { opacity: 0.5; }
 /* Fields look like fields, apart from buttons: the system's field colors and a clear border. */
-input, textarea { font: inherit; color: FieldText; background: Field; border: 1px solid rgb(127 127 127 / 0.6); border-radius: 6px; padding: 5px 8px; }
-input:focus, textarea:focus { outline: 2px solid #0a84ff; outline-offset: -1px; }
+input, textarea, select { font: inherit; color: FieldText; background: Field; border: 1px solid rgb(127 127 127 / 0.6); border-radius: 6px; padding: 5px 8px; }
+input:focus, textarea:focus, select:focus { outline: 2px solid #0a84ff; outline-offset: -1px; }
 input[type="checkbox"], input[type="radio"] { padding: 0; }
 textarea { width: 100%; box-sizing: border-box; }
 h1 { margin: 0; font-size: 20px; }

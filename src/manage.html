@@ -36,7 +36,7 @@
       main > .scroll.tall { flex: 1 1 0; max-height: none; min-height: 140px; } /* a page's main box takes the room left, down to its foot */
       body.setup { grid-template-columns: 1fr; }
       body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
-      #progress { position: fixed; right: 16px; bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
+      #progress { position: fixed; right: 16px; top: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
     </style>
   </head>
   <body>
@@ -151,6 +151,12 @@
 
       // Finds the repositories under the code folders and the emails in them (init --scan), and adds the
       // ones chosen; then onDone.
+      // Select all and Deselect all, over a list's [item, checkbox] pairs.
+      function bulk(list) {
+        const all = (on) => () => list.forEach(([, c]) => (c.checked = on));
+        return el("div", "row", button(t("Select all"), all(true)), button(t("Deselect all"), all(false)));
+      }
+
       function finder(onDone) {
         // The folders to look in: the ones gitfolio saved or suggests, and the ones picked in the system's
         // own window (Finder, File Explorer), no path to type.
@@ -180,11 +186,11 @@
             return [
               el("h2", "", t("Emails in these repositories")),
               el("p", "dim", t("Commits by the ones you choose count as yours.")),
-              el("div", "scroll", ...found.map(([e, c]) => label(c, e.email, el("span", "dim", " · " + [t("{n} repositories", { n: e.repositories }),
+              bulk(found), el("div", "scroll", ...found.map(([e, c]) => label(c, e.email, el("span", "dim", " · " + [t("{n} repositories", { n: e.repositories }),
                 e.work && t("yours"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · "))))),
               el("div", "row", button(t("Use the chosen emails"), () => act(msg, useEmails))),
               el("h2", "", t("Repositories with your commits, not collected yet ({n})", { n: repos.length })),
-              el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${r.path}`)))),
+              bulk(repos), el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${r.path}`)))),
               el("div", "actions", button(t("Skip"), onDone),
                 button(t("Add the chosen repositories"), () => add(repos.filter(([, c]) => c.checked).map(([r]) => r)))),
             ];
@@ -194,7 +200,7 @@
           const failures = [];
           for (const [i, r] of list.entries()) {
             msg.className = "dim";
-            msg.textContent = t("Collecting {name} ({i} of {n}); a large one takes a while…", { name: r.name, i: i + 1, n: list.length });
+            msg.replaceChildren(t("Collecting {name} ({i} of {n})…", { name: r.name, i: i + 1, n: list.length }), el("br", ""), t("A large one takes a while."));
             try {
               await gitfolio("add", r.path);
             } catch (e) {
@@ -279,7 +285,15 @@
       async function general(main) {
         const on = checkbox(await call("autostart")), msg = el("p", "");
         on.onchange = () => act(msg, () => call("set_autostart", { on: on.checked }));
+        // The language: the device's to start with; a language's name in itself.
+        const lang = el("select", "");
+        const chosen = await call("language");
+        for (const [value, name] of [["", t("As the device is set")], ["ko", "한국어"], ["en", "English"], ["ja", "日本語"]]) {
+          lang.append(Object.assign(el("option", "", name), { value, selected: value === chosen }));
+        }
+        lang.onchange = () => act(msg, () => call("set_language", { lang: lang.value }));
         main.replaceChildren(el("h1", "", t("General")),
+          el("label", "", el("span", "", t("Language")), lang),
           label(on, t("Start GitFolio when the computer starts"), el("div", "dim", t("It waits as an icon in the menu bar or the taskbar."))), msg);
       }
 
@@ -554,7 +568,9 @@
       const LABELS = { policy: "Data policy" }; // the menu's words where they are not the section's name
       const goTo = (section) => go(section); // where an error is solved (app.js)
 
+      let current;
       function go(name) {
+        current = name;
         const draw = SECTIONS[name] ?? setup;
         document.body.classList.toggle("setup", draw === setup); // the setup alone, as an installer, no menu
         for (const b of $("nav").children) b.className = b.dataset.section === name ? "on" : "";
@@ -563,13 +579,18 @@
         draw(main).catch((e) => main.replaceChildren(el("p", "", ...drawError(e))));
       }
 
-      ready().then(() => {
-        for (const name of Object.keys(SECTIONS)) {
+      function drawNav() {
+        $("nav").replaceChildren(...Object.keys(SECTIONS).map((name) => {
           const b = button(t(LABELS[name] ?? title(name)), () => go(name));
           b.dataset.section = name;
-          $("nav").append(b);
-        }
+          return b;
+        }));
+      }
+      ready().then(() => {
+        drawNav();
         window.__TAURI__.event.listen("section", ({ payload }) => go(payload)); // from the tray (lib.rs)
+        // The language set in General: the words again, where the user is.
+        window.__TAURI__.event.listen("language", () => ready().then(() => (drawNav(), go(current))));
         go(window.initialSection ?? "overview");
       });
     </script>
