@@ -21,6 +21,17 @@
       main .row { margin: 14px 0; }
       main > .actions { margin-top: auto; padding-top: 20px; }
       main td .row { margin: 0; }
+      /* The repositories: one line each, columns of fixed width, words cut short rather than folded or overlapping. */
+      .repos { padding: 0 10px; }
+      .repo { display: grid; grid-template-columns: minmax(0, 1fr) 6ch 8ch 6ch 10ch 92px; gap: 10px; align-items: center; min-height: 36px;
+        border-bottom: 1px solid rgb(127 127 127 / 0.2); }
+      .repo > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .repo .num { text-align: right; }
+      .repo .icons { display: flex; gap: 4px; justify-content: flex-end; }
+      .repo.head { position: sticky; top: 0; z-index: 1; min-height: 30px; background: Canvas; font-size: 11px; }
+      .repo.head span { opacity: 0.6; }
+      .repo-box:empty { display: none; }
+      .repo-box { padding: 6px 0 10px; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
       main > .foot { justify-content: space-between; }
       /* The time picker: steppers for hour and minute, AM/PM as two joined buttons, the chosen one lit. */
@@ -190,7 +201,7 @@
                 e.work && t("yours"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · "))))),
               el("div", "row", button(t("Use the chosen emails"), () => act(msg, useEmails))),
               el("h2", "", t("Repositories with your commits, not collected yet ({n})", { n: repos.length })),
-              bulk(repos), el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${r.path}`)))),
+              bulk(repos), el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${home(r.path)}`)))),
               el("div", "actions", button(t("Skip"), onDone),
                 button(t("Add the chosen repositories"), () => add(repos.filter(([, c]) => c.checked).map(([r]) => r)))),
             ];
@@ -251,22 +262,25 @@
         if (!s.setUp) return go("setup");
         const local = s.syncMode === "local";
         const result = el("div", ""), adding = el("div", "");
-        const table = el("table", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", "", h && t(h)))));
+        // The repositories, one line each in a box that scrolls under its fixed head: name and path (home as ~),
+        // its counts in columns of fixed width, and icon buttons; details and removing open under the line.
+        const table = el("div", "scroll tall repos",
+          el("div", "repo head", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("span", h === "Commits" ? "num" : "", h && t(h)))));
         for (const r of s.repositories) {
-          const box = el("div", "");
-          const cell = Object.assign(el("td", "", box), { colSpan: 6 });
+          const box = el("div", "repo-box");
+          const where = el("span", "", el("strong", "", r.name), " ", el("span", "dim", home(r.path)));
+          where.title = `${r.name} · ${home(r.path)}`;
           table.append(
-            el("tr", "",
-              el("td", "", r.name, el("div", "dim", r.path)),
-              el("td", "", String(r.commits)),
-              el("td", "", r.namespace === "" ? t("never (no remote)") : r.waiting ? t("waiting") : String(r.sent)),
-              el("td", "", t(r.hooks)),
-              el("td", "", r.lastCommit || "-"),
-              el("td", "", el("div", "row",
-                button(t("Details"), () => fill(box, async () => [drawValue(await gitfolio("status", r.path))])),
-                button(t("Collect again"), () => fill(box, async () => drawScan(await gitfolio("scan", r.path)))),
-                button(t("Remove…"), () => confirmRemove(r, box))))),
-            el("tr", "", cell));
+            el("div", "repo", where,
+              el("span", "num", String(r.commits)),
+              el("span", "", r.namespace === "" ? t("never (no remote)") : r.waiting ? t("waiting") : String(r.sent)),
+              el("span", "", t(r.hooks)),
+              el("span", "", r.lastCommit || "-"),
+              el("span", "icons",
+                iconButton(ICONS.info, t("Details"), () => fill(box, async () => [drawValue(await gitfolio("status", r.path))])),
+                iconButton(ICONS.refresh, t("Collect again"), () => fill(box, async () => drawScan(await gitfolio("scan", r.path)))),
+                iconButton(ICONS.close, t("Remove…"), () => confirmRemove(r, box)))),
+            box);
         }
         main.replaceChildren(
           el("header", "", el("h1", "", t("Overview")), el("div", "row",

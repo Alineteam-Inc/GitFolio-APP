@@ -59,6 +59,24 @@ function button(text, f) {
   return b;
 }
 
+// Small icons for buttons, drawn in the text's colour; the button's words show on hover.
+const ICONS = {
+  refresh: '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/>',
+  close: '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>',
+};
+
+function iconButton(icon, words, f) {
+  const b = button("", f);
+  b.className = "icon";
+  b.innerHTML = `<svg viewBox="0 0 24 24">${icon}</svg>`; // the app's own drawings above, no words from outside
+  b.title = b.ariaLabel = words;
+  return b;
+}
+
+// A path with the user's home folder as ~: /Users/me/code/app → ~/code/app (Windows' C:\Users\me\… too).
+const home = (p) => p.replace(/^(\/Users\/[^/]+|\/home\/[^/]+|[A-Za-z]:\\Users\\[^\\]+)/, "~");
+
 // Runs a command of lib.rs; its error is thrown as {code, message}: gitfolio's own ({"error": ...}), or
 // "failed" with the text of one that could not run, or of the app.
 async function call(cmd, args) {

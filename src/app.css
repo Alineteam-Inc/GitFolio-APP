@@ -13,6 +13,9 @@ header { display: flex; justify-content: space-between; align-items: center; gap
 /* Buttons of one height and shape, as wide as their words: the system's rounded rectangle. Their words stay on
    one line and they do not shrink in a narrow row, which would fold the words and break the height. */
 button { font: inherit; height: 28px; min-width: 88px; padding: 0 14px; border: 0; border-radius: 6px; background: rgb(127 127 127 / 0.2); color: inherit; white-space: nowrap; flex-shrink: 0; }
+button.icon { min-width: 28px; width: 28px; padding: 0; display: inline-grid; place-items: center; background: transparent; }
+button.icon:hover { background: rgb(127 127 127 / 0.2); }
+button.icon svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .chip button { height: auto; min-width: 0; padding: 0 4px; background: none; } /* the × of a blocked word */
 button:active { background: rgb(127 127 127 / 0.3); }
 button:disabled { opacity: 0.5; }
