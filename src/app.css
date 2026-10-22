@@ -5,9 +5,11 @@
 /* The macOS window glass of the tray window shows through, toned down to keep the text readable. */
 :root.glass { background: color-mix(in srgb, Canvas 60%, transparent); }
 body { margin: 0; padding: 14px; }
-[hidden] { display: none; }
+[hidden] { display: none !important; } /* over .row and the like, which set a display of their own */
 header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
-button { font: inherit; border: 0; border-radius: 999px; padding: 4px 12px; background: rgb(127 127 127 / 0.18); color: inherit; }
+/* Buttons of one size and shape, whatever their words: the system's rounded rectangle. */
+button { font: inherit; height: 28px; min-width: 88px; padding: 0 14px; border: 0; border-radius: 6px; background: rgb(127 127 127 / 0.2); color: inherit; }
+.chip button { height: auto; min-width: 0; padding: 0 4px; background: none; } /* the × of a blocked word */
 button:active { background: rgb(127 127 127 / 0.3); }
 button:disabled { opacity: 0.5; }
 /* Fields look like fields, apart from buttons: the system's field colors and a clear border. */
