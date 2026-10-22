@@ -16,6 +16,7 @@
       #state { margin-bottom: 8px; }
       footer { display: flex; align-items: center; gap: 4px; padding-top: 8px; border-top: 1px solid rgb(127 127 127 / 0.2); }
       footer .spacer { flex: 1; text-align: center; font-size: 11px; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      footer .spacer.ok { opacity: 1; }
       footer button { min-width: 32px; width: 32px; padding: 0; background: transparent; display: grid; place-items: center; }
       footer button:hover { background: rgb(127 127 127 / 0.2); }
       footer svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -86,10 +87,17 @@
           await load(true);
           $("refresh").disabled = false;
         });
+        // Sent, it says so in green in the foot for a while, then what is left again; only failures stay above.
         icon("sync", t("Sync now"), async () => {
           $("sync").disabled = true;
-          await fill($("result"), async () => drawSync(await gitfolio("sync")));
+          let r;
+          await fill($("result"), async () => [drawFailures((r = await gitfolio("sync")).failed ?? [])]);
           await fill($("state"), async () => drawState(await gitfolio("status"))); // the last sync, and what is left
+          if (r) {
+            const left = $("unsent").textContent, done = `✓ ${t(r.commits || r.deleted || r.moved || r.deps ? "Sent!" : "Nothing new to send.")}`;
+            Object.assign($("unsent"), { textContent: done, className: "spacer ok" });
+            setTimeout(() => $("unsent").textContent === done && Object.assign($("unsent"), { textContent: left, className: "spacer" }), 5000);
+          }
           $("sync").disabled = false;
         });
         icon("settings", t("Settings"), () => open("overview"));
