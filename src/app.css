@@ -23,7 +23,7 @@ h2 { margin: 16px 0 6px; font-size: 11px; font-weight: normal; opacity: 0.6; }
 p { margin: 4px 0; }
 label { display: flex; gap: 6px; align-items: baseline; margin: 6px 0; }
 table { border-collapse: collapse; width: 100%; }
-th, td { text-align: left; vertical-align: top; padding: 4px 8px 4px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
+th, td { text-align: left; vertical-align: middle; padding: 4px 8px 4px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
 th { font-weight: normal; opacity: 0.6; }
 .dim { opacity: 0.6; }
 .error { color: #d33; white-space: pre-wrap; }
@@ -37,6 +37,10 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .score span:nth-child(n + 3) { text-align: right; }
 .bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 0.2); }
 .bar div { height: 100%; border-radius: 3px; background: #0a84ff; }
+/* A list of one-line items: words and small badges, buttons at the end, all level. */
+.item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
+.item-actions { display: flex; gap: 8px; margin-left: auto; }
+.badge { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { padding: 2px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
 .chip.hidden { opacity: 0.5; }

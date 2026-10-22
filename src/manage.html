@@ -20,6 +20,7 @@
       main label { margin: 10px 0; }
       main .row { margin: 14px 0; }
       main > .actions { margin-top: auto; padding-top: 20px; }
+      main td .row { margin: 0; } /* buttons in a table's cell, level with its words */
       #progress { position: fixed; right: 16px; bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
     </style>
   </head>
@@ -82,13 +83,14 @@
           const add = input("email", t("another work email")), msg = el("p", "");
           const change = (...args) => act(msg, () => gitfolio("email", ...args), draw);
           return [
-            el("table", "", ...emails.map((e) => el("tr", "",
-              el("td", "", e.email),
-              el("td", "dim", [e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · ")),
-              el("td", "", el("div", "row",
+            // One line each: the email and what it is, its buttons at the end.
+            ...emails.map((e) => el("div", "item",
+              el("span", "", e.email),
+              ...[e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).map((b) => el("span", "badge", b)),
+              el("div", "item-actions",
                 e.primary ? "" : button(t("Make primary"), () => change("primary", e.email)),
                 e.verified ? "" : button(t("Verify…"), () => act(msg, () => verify(e.email))),
-                button(t("Remove"), () => change("rm", e.email))))))),
+                button(t("Remove"), () => change("rm", e.email))))),
             el("div", "row", add, button(t("Add"), () => change("add", add.value.trim()))),
             msg,
           ];
