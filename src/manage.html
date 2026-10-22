@@ -21,6 +21,8 @@
       main .row { margin: 14px 0; }
       main > .actions { margin-top: auto; padding-top: 20px; }
       main td .row { margin: 0; }
+      /* A long list scrolls in its own box, the page stays put. */
+      .scroll { max-height: 180px; overflow: auto; border: 1px solid rgb(127 127 127 / 0.3); border-radius: 6px; padding: 2px 12px; }
       body.setup { grid-template-columns: 1fr; }
       body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
       #progress { position: fixed; right: 16px; bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
@@ -142,11 +144,11 @@
             return [
               el("h2", "", t("Emails in these repositories")),
               el("p", "dim", t("Commits by the ones you choose count as yours.")),
-              ...found.map(([e, c]) => label(c, e.email, el("span", "dim", " · " + [t("{n} repositories", { n: e.repositories }),
-                e.work && t("yours"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · ")))),
+              el("div", "scroll", ...found.map(([e, c]) => label(c, e.email, el("span", "dim", " · " + [t("{n} repositories", { n: e.repositories }),
+                e.work && t("yours"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · "))))),
               el("div", "row", button(t("Use the chosen emails"), () => act(msg, useEmails))),
               el("h2", "", t("Repositories with your commits, not collected yet ({n})", { n: repos.length })),
-              ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${r.path}`))),
+              el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${r.path}`)))),
               el("div", "actions", button(t("Skip"), onDone),
                 button(t("Add the chosen repositories"), () => add(repos.filter(([, c]) => c.checked).map(([r]) => r)))),
             ];
