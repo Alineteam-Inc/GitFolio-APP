@@ -139,7 +139,7 @@ fn find_cli(own: &Path, dirs: &[PathBuf]) -> Result<(PathBuf, bool), String> {
         Some((v, false)) if new_enough(&v) => Ok((found, false)),
         // As gitfolio's errors are, with a code (cliTooOld) the windows say in their own words.
         v => Err(serde_json::json!({"error": {"code": "cliTooOld", "message": format!(
-            "The gitfolio installed on this computer ({}) is {}, and GitFolio needs {} or newer. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.",
+            "The GitFolio CLI installed on this computer ({}) is {}, and GitFolio needs {} or newer. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.",
             found.display(),
             v.map_or("older than 0.6.0".to_string(), |(v, _)| v),
             MIN_CLI.map(|n| n.to_string()).join(".")
@@ -261,7 +261,7 @@ fn in_test_home(p: &Path) -> bool {
 #[tauri::command]
 async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String> {
     if !allowed(&args) {
-        return Err(format!("GitFolio does not run gitfolio {}", args.join(" ")));
+        return Err(format!("GitFolio does not run the GitFolio CLI command {}", args.join(" ")));
     }
     // A development build is started with a test HOME and a test server (GITFOLIO_API_URL, which its
     // gitfolio, built from source, takes): it logs in to that server only, never to aline.team itself.
@@ -272,7 +272,7 @@ async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String>
             return Err("This development build has no test server to log in to.".into());
         }
         if args[0] == "remove" && !args.get(1).is_some_and(|p| in_test_home(Path::new(p))) {
-            return Err("This development build removes only repositories in its test folder: the gitfolio in real use relies on the others' hooks.".into());
+            return Err("This development build removes only repositories in its test folder: the GitFolio CLI in real use relies on the others' hooks.".into());
         }
     }
     // The data policy, a text to read, comes from the bundled one when the one installed is too old to run:
@@ -310,7 +310,7 @@ fn install_cli() -> Result<(), String> {
     #[cfg(unix)]
     {
         if !may_link() {
-            return Err("This development build installs gitfolio only in its test folder.".into());
+            return Err("This development build installs the GitFolio CLI only in its test folder.".into());
         }
         if let (Ok((own, true)), Some(at)) = (cli(), link_path()) {
             link(&own, &at).map_err(|e| e.to_string())?;
@@ -388,7 +388,7 @@ async fn uninstall(purge: bool) -> Result<String, String> {
             let status: serde_json::Value = serde_json::from_str(&run_cli(&cli, &["status"], None)?).map_err(|e| e.to_string())?;
             let paths = status["repositories"].as_array().cloned().unwrap_or_default();
             if paths.iter().any(|r| !in_test_home(Path::new(r["path"].as_str().unwrap_or("")))) {
-                return Err("This development build does not uninstall with repositories outside its test folder: the gitfolio in real use relies on their hooks. Remove those first.".into());
+                return Err("This development build does not uninstall with repositories outside its test folder: the GitFolio CLI in real use relies on their hooks. Remove those first.".into());
             }
         }
         done = run_cli(&cli, if purge { &["uninstall", "--purge-local"] } else { &["uninstall"] }, None)?;

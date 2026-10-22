@@ -6,7 +6,7 @@ The GitFolio app by [Alineteam Inc.](https://aline.team) (macOS, Linux, Windows)
 [GitFolio](https://github.com/Alineteam-Inc/GitFolio-CLI), which sends metadata of the commits you
 authored and pushed to [aline.team](https://aline.team) to build your developer profile. Your developer
 type, tech stack and last sync are one click away; setup, login, repositories and settings are in its
-window. It carries its own `gitfolio`, so nothing else needs installing.
+window. It carries its own GitFolio CLI (`gitfolio`), so nothing else needs installing.
 [Latest release](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest) · [한국어](#한국어)
 
 ## Install
@@ -27,7 +27,7 @@ Open Anyway next to "GitFolio was blocked". Or, in a terminal:
 `xattr -dr com.apple.quarantine /Applications/GitFolio.app`.
 
 **Windows:** run the setup. It is not signed yet, so SmartScreen may warn: choose More info › Run anyway.
-The setup puts GitFolio's folder on your PATH, for the git hooks to find `gitfolio`.
+The setup puts GitFolio's folder on your PATH, for the git hooks to find the GitFolio CLI.
 
 **Linux:**
 
@@ -48,15 +48,15 @@ settings and repositories stay. Installing a newer package over the old one work
 
 ## Get started
 
-Start GitFolio. The first time, its setup opens by itself: the data policy, git and `gitfolio`, sign-up
+Start GitFolio. The first time, its setup opens by itself: the data policy, git and the GitFolio CLI, sign-up
 or login with an email code, the repositories to collect, and how to sync. After that, GitFolio lives
 in the menu bar (macOS) or the system tray (Windows, Linux) and starts with your computer, which you
 can turn off in its settings.
 
 What is collected, and what never is, is the same as for the command line: see
 [GitFolio's README](https://github.com/Alineteam-Inc/GitFolio-CLI#nothing-is-collected-without-your-permission).
-The app uses a `gitfolio` you installed on your own (Homebrew, the install script) when it is 0.6.0
-or newer; otherwise it uses its own.
+If you installed the GitFolio CLI on your own (Homebrew, the install script), the setup first updates it
+to the newest release and the app uses it, so the computer has one version; otherwise it uses its own.
 
 ## Uninstall
 
@@ -81,7 +81,7 @@ Tech icons from [Devicon](https://devicon.dev) (MIT), see [src/icons/tech](src/i
 GitFolio 앱은 터미널 없이 메뉴 막대나 시스템 트레이에서 [GitFolio](https://github.com/Alineteam-Inc/GitFolio-CLI)를
 설정하고 실행하는 앱입니다 (Alineteam Inc., macOS·Linux·Windows). GitFolio는 내가 작성하고 push한 커밋의
 메타데이터를 [aline.team](https://aline.team)으로 보내 개발 프로필을 만들어 줍니다. 개발자 유형, 기술 스택,
-마지막 동기화를 클릭 한 번으로 보고, 설정·로그인·저장소 관리는 창에서 합니다. 앱 안에 `gitfolio`가 들어
+마지막 동기화를 클릭 한 번으로 보고, 설정·로그인·저장소 관리는 창에서 합니다. 앱 안에 GitFolio CLI(`gitfolio`)가 들어
 있어 따로 설치할 것이 없습니다.
 
 ### 설치
@@ -101,7 +101,7 @@ macOS가 막습니다. 완료를 누른 뒤 시스템 설정 › 개인정보 �
 그래도 열기를 누르세요. 터미널에서는 `xattr -dr com.apple.quarantine /Applications/GitFolio.app`.
 
 **Windows:** 설치 프로그램을 실행합니다. 아직 서명이 없어 SmartScreen이 경고할 수 있습니다. 추가 정보 ›
-실행을 누르세요. 설치 프로그램은 git 훅이 `gitfolio`를 찾을 수 있도록 GitFolio 폴더를 PATH에 넣습니다.
+실행을 누르세요. 설치 프로그램은 git 훅이 GitFolio CLI를 찾을 수 있도록 GitFolio 폴더를 PATH에 넣습니다.
 
 **Linux:**
 
@@ -122,14 +122,14 @@ sudo apt install ./GitFolio_linux_amd64.deb
 
 ### 시작하기
 
-GitFolio를 실행합니다. 처음에는 설정이 저절로 열립니다. 데이터 정책, git과 `gitfolio`, 이메일 코드로
+GitFolio를 실행합니다. 처음에는 설정이 저절로 열립니다. 데이터 정책, git과 GitFolio CLI, 이메일 코드로
 가입·로그인, 수집할 저장소, 동기화 방식 순서입니다. 그 뒤로 GitFolio는 메뉴 막대(macOS)나 시스템
 트레이(Windows, Linux)에 있고 컴퓨터와 함께 시작합니다. 이는 설정에서 끌 수 있습니다.
 
 수집하는 것과 절대 수집하지 않는 것은 명령줄과 같습니다.
 [GitFolio README](https://github.com/Alineteam-Inc/GitFolio-CLI#nothing-is-collected-without-your-permission)를
-보세요. 따로 설치한 `gitfolio`(Homebrew, 설치 스크립트)가 0.6.0 이상이면 앱이 그것을 쓰고, 아니면 앱에
-들어 있는 것을 씁니다.
+보세요. GitFolio CLI를 따로 설치했다면(Homebrew, 설치 스크립트) 설정이 먼저 그것을 최신 버전으로 올리고 앱이
+그것을 씁니다. 한 컴퓨터에 버전이 하나만 있게 하려는 것입니다. 따로 설치한 것이 없으면 앱에 들어 있는 것을 씁니다.
 
 ### 제거
 

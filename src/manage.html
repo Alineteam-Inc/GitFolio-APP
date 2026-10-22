@@ -516,13 +516,13 @@
         }
         main.replaceChildren(
           el("h1", "", t("About")),
-          problem ? el("p", "", ...drawError(problem)) : el("p", "", `gitfolio ${version}`,
+          problem ? el("p", "", ...drawError(problem)) : el("p", "", `GitFolio CLI ${version}`,
             el("div", "dim sub", `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`)),
           el("h2", "", t("Uninstall")),
           el("p", "", t(bundled
             ? mac ? "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app."
               : "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in."
-            : mac ? "Removes the app. The gitfolio installed on its own stays, with its hooks and settings." : "The gitfolio installed on its own stays, with its hooks and settings.")),
+            : mac ? "Removes the app. The GitFolio CLI installed on its own stays, with its hooks and settings." : "The GitFolio CLI installed on its own stays, with its hooks and settings.")),
           bundled ? "" : elsewhere,
           el("p", "dim", t("Your data on aline.team stays.")),
           bundled ? label(purge, t("Also delete the commits collected on this computer")) : "",
@@ -559,10 +559,10 @@
             async function update() {
               updated = true;
               box.replaceChildren(msg);
-              msg.replaceChildren(el("p", "dim", t("Updating the gitfolio installed on this computer…")));
+              msg.replaceChildren(el("p", "dim", t("Updating the GitFolio CLI installed on this computer…")));
               try {
                 const r = JSON.parse(await call("update_cli"));
-                msg.replaceChildren(r?.updated ? el("p", "", el("span", "ok", "✓ "), t("The gitfolio installed on this computer was updated from {from} to {to}.", r)) : "");
+                msg.replaceChildren(r?.updated ? el("p", "", el("span", "ok", "✓ "), t("The GitFolio CLI installed on this computer was updated from {from} to {to}.", r)) : "");
               } catch (e) {
                 msg.replaceChildren(el("p", "", ...drawError(e)));
               }
@@ -581,14 +581,14 @@
                 box.replaceChildren(
                   el("p", "", t("GitFolio needs two things on this computer, installed in this order.")),
                   need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found, el("p", "dim", t("git was not found on this computer.")), fresh(git)),
-                  need(2, `gitfolio ${ver.release || ver.version}`, t(cli.bundled
+                  need(2, `GitFolio CLI ${ver.release || ver.version}`, t(cli.bundled
                     ? "Collects your commits in the background when you push, through git hooks. It comes with GitFolio."
                     : "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used."),
                   cli.installed, git.found ? "" : el("p", "dim", t("Install git first.")), fresh(ver)),
                   msg);
                 bar.replaceChildren(button(t("Check again"), check), !git.found
                   ? button(t("Install git"), () => act(msg, installGit))
-                  : !cli.installed ? button(t("Install gitfolio"), () => act(msg, () => call("install_cli"), check))
+                  : !cli.installed ? button(t("Install GitFolio CLI"), () => act(msg, () => call("install_cli"), check))
                   : button(t("Continue"), next));
               } catch (e) {
                 box.replaceChildren(el("p", "", ...drawError(e)), msg);
