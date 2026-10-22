@@ -32,9 +32,11 @@
       table.repos tr.more:has(.repo-box:empty) { display: none; } /* opened by details or removing */
       /* What opens under a line wraps within the box, rather than widening the table past it. */
       table.repos tr.more td { white-space: normal; max-width: 0; }
-      /* A narrow box drops the hooks' column (nearly always "on"), to keep the others whole. */
+      /* A narrow box drops the hooks' column (nearly always "on"), then the last commit's (in the details), to keep
+         the name readable and the buttons whole. */
       .scroll.tall { container-type: inline-size; }
       @container (max-width: 520px) { table.repos .hooks { display: none; } }
+      @container (max-width: 440px) { table.repos .last { display: none; } }
       .repo-box { padding: 2px 0 6px; }
       .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; padding: 6px 8px; }
       .facts span { overflow-wrap: anywhere; }
@@ -312,7 +314,7 @@
         // the window is narrow, whole on hover; icon buttons; details and removing open under the line.
         const rows = el("tbody", "");
         const table = el("div", "scroll tall", el("table", "repos",
-          el("thead", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", { Commits: "num", Hooks: "hooks" }[h] ?? "", h && t(h))))),
+          el("thead", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", { Commits: "num", Hooks: "hooks", "Last commit": "last" }[h] ?? "", h && t(h))))),
           rows));
         for (const r of s.repositories) {
           const box = el("div", "repo-box");
@@ -327,9 +329,9 @@
           rows.append(
             el("tr", "", where,
               el("td", "num", String(r.commits)),
-              el("td", "", r.namespace === "" ? t("never (no remote)") : r.waiting ? t("waiting") : String(r.sent)),
+              el("td", "", r.namespace === "" ? t("no remote") : r.waiting ? t("waiting") : String(r.sent)),
               el("td", "hooks", t(r.hooks)),
-              el("td", "", r.lastCommit || "-"),
+              el("td", "last", r.lastCommit || "-"),
               el("td", "icons",
                 iconButton(ICONS.info, t("Details"), panel("details", () => fill(box, async () => drawRepo(await gitfolio("status", r.path))))),
                 iconButton(ICONS.refresh, t("Collect again"), panel("collect", () => fill(box, async () => drawScan(await gitfolio("scan", r.path))))),

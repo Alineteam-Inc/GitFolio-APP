@@ -50,10 +50,12 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .score .num { text-align: right; } /* scores at the right, so their digits line up; "AI" in a column of its own */
 .bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 0.2); }
 .bar div { height: 100%; border-radius: 3px; background: #0a84ff; }
-/* A list of one-line items: words and small badges, buttons at the end, all level. */
-.item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
+/* A list of one-line items: words and small badges, buttons at the end, all level; when too narrow, the
+   buttons go under them and a long word breaks, rather than either being cut. */
+.item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
+.item > span:first-child { overflow-wrap: anywhere; }
 .item-actions { display: flex; gap: 8px; margin-left: auto; }
-.badge { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
+.badge { white-space: nowrap; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
 /* A long list scrolls in its own box, the page stays put. */
 .scroll { max-height: 180px; overflow: auto; border: 1px solid rgb(127 127 127 / 0.3); border-radius: 6px; padding: 2px 12px; }
 /* The developer type's picture beside its name; the type with AI's, small, after its words. */
