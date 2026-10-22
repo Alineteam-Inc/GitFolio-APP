@@ -22,6 +22,7 @@
       main > .actions { margin-top: auto; padding-top: 20px; }
       main td .row { margin: 0; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
+      main > .foot { justify-content: space-between; } /* Back at the left, a step's buttons at the right */
       main > .scroll.tall { flex: 1 1 0; max-height: none; min-height: 140px; } /* a page's main box takes the room left, down to its foot */
       body.setup { grid-template-columns: 1fr; }
       body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
@@ -437,12 +438,19 @@
           async (next) => ((await gitfolio("whoami")).loggedIn ? null : [el("h1", "", t("Log in or sign up")), loginForm(next)]),
           async (next) => [el("h1", "", t("Choose the repositories to collect")), finder(next)],
           async (next) => {
+            // A choice, each with its words beside it as in Sync, then Continue; automatic, as gitfolio starts.
             const msg = el("p", "");
-            const pick = (on) => act(msg, () => gitfolio("config", "autosync", on), next);
+            let autosync = "on";
+            const choice = (value, text, note) => {
+              const r = Object.assign(input("radio"), { name: "autosync", checked: value === autosync });
+              r.onchange = () => (autosync = value);
+              return label(r, t(text), el("div", "dim", t(note)));
+            };
             return [el("h1", "", t("How should commits be sent?")),
-              el("div", "row", button(t("Automatic"), () => pick("on"))), el("p", "dim", t("Sent to aline.team right after each git push.")),
-              el("div", "row", button(t("Local"), () => pick("off"))), el("p", "dim", t("Nothing is sent until you sync, or ask for your developer type or stack.")),
-              msg];
+              choice("on", "Automatic", "Sent to aline.team right after each git push."),
+              choice("off", "Local", "Nothing is sent until you sync, or ask for your developer type or stack."),
+              msg,
+              el("div", "actions", button(t("Continue"), () => act(msg, () => gitfolio("config", "autosync", autosync), next)))];
           },
           async (next) => {
             const box = el("div", ""), bar = el("div", "actions", button(t("No"), next));
@@ -481,9 +489,9 @@
           try {
             const parts = await steps[i](next);
             if (parts === null) return ++i < steps.length ? show() : go("overview");
-            // The foot: Back, then the step's own buttons (its last part when it has them).
-            const own = parts.at(-1)?.className === "actions" ? parts.pop() : "";
-            const foot = el("div", "actions", shown.length ? button(t("Back"), back) : "", own);
+            // The foot: Back always at its left, the step's own buttons (its last part when it has them) at its right.
+            const own = parts.at(-1)?.className === "actions" ? parts.pop() : el("span", "");
+            const foot = el("div", "actions foot", shown.length ? button(t("Back"), back) : el("span", ""), own);
             main.replaceChildren(el("p", "dim", t("Setup · step {i} of {n}", { i: i + 1, n: steps.length })), ...parts, foot);
           } catch (e) {
             main.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button(t("Try again"), show)));
