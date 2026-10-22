@@ -47,6 +47,22 @@ fn version_of(cli: &Path) -> Option<(String, bool)> {
     Some((v["version"].as_str()?.to_string(), v["bundled"].as_bool()?))
 }
 
+/// The screen language gitfolio works out from the device (version --json "lang": en, ko or ja).
+fn lang_of(cli: &Path) -> String {
+    let out = Command::new(cli).args(["version", "--json"]).output().ok();
+    let v: Option<serde_json::Value> = out.and_then(|o| serde_json::from_slice(&o.stdout).ok());
+    v.and_then(|v| v["lang"].as_str().map(str::to_string)).unwrap_or_else(|| "en".into())
+}
+
+/// The tray menu's words: open, uninstall, quit.
+fn menu_words(lang: &str) -> [&'static str; 3] {
+    match lang {
+        "ko" => ["GitFolio 열기", "GitFolio 제거…", "종료"],
+        "ja" => ["GitFolioを開く", "GitFolioをアンインストール…", "終了"],
+        _ => ["Open GitFolio", "Uninstall GitFolio…", "Quit"],
+    }
+}
+
 /// "dev" (a build from source) or at least MIN_CLI.
 fn new_enough(version: &str) -> bool {
     version == "dev" || version.split('.').map(|n| n.parse::<u32>().unwrap_or(0)).cmp(MIN_CLI).is_ge()
@@ -70,12 +86,14 @@ fn find_cli(own: &Path, dirs: &[PathBuf]) -> Result<(PathBuf, bool), String> {
     match version_of(&found) {
         Some((_, true)) => Ok((own.to_path_buf(), true)),
         Some((v, false)) if new_enough(&v) => Ok((found, false)),
-        v => Err(format!(
+        // As gitfolio's errors are, with a code (cliTooOld) the windows say in their own words.
+        v => Err(serde_json::json!({"error": {"code": "cliTooOld", "message": format!(
             "The gitfolio installed on this computer ({}) is {}, and GitFolio needs {} or newer. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.",
             found.display(),
             v.map_or("older than 0.6.0".to_string(), |(v, _)| v),
             MIN_CLI.map(|n| n.to_string()).join(".")
-        )),
+        )}})
+        .to_string()),
     }
 }
 
@@ -324,9 +342,10 @@ pub fn run() {
             glass(WebviewWindowBuilder::from_config(app, &window_config(app.handle(), "main"))?).build()?;
 
             // Linux sends no tray click events, so the menu is the way to the windows there.
-            let open = MenuItem::with_id(app, "open", "Open GitFolio", true, None::<&str>)?;
-            let uninstall = MenuItem::with_id(app, "uninstall", "Uninstall GitFolio…", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let [open, uninstall, quit] = menu_words(&cli().map(|(cli, _)| lang_of(&cli)).unwrap_or_default());
+            let open = MenuItem::with_id(app, "open", open, true, None::<&str>)?;
+            let uninstall = MenuItem::with_id(app, "uninstall", uninstall, true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", quit, true, None::<&str>)?;
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("GitFolio")

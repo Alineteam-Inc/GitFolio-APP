@@ -3,6 +3,26 @@
 const { invoke } = window.__TAURI__.core;
 const $ = (id) => document.getElementById(id);
 
+const langOf = (v) => (/^ko/i.test(v ?? "") ? "ko" : /^ja/i.test(v ?? "") ? "ja" : "en");
+
+// The screen's language: Korean, Japanese or English, as the device is set. The one gitfolio works out
+// (ready) wins, so the app's words and gitfolio's match; until then, or with a gitfolio that does not
+// say, the web view's.
+let LANG = langOf(navigator.language);
+
+async function ready() {
+  try {
+    const { lang } = await gitfolio("version");
+    if (lang) LANG = langOf(lang);
+  } catch {} // an old gitfolio installed on its own: the web view's language stands
+  document.documentElement.lang = LANG;
+}
+
+// The app's words in the screen's language (i18n.js), {name} filled in from `vars`.
+function t(words, vars = {}) {
+  return (MESSAGES[LANG]?.[words] ?? words).replace(/\{(\w+)\}/g, (_, k) => vars[k]);
+}
+
 // An element with a class and children, text or elements: text never goes in as HTML.
 function el(tag, cls, ...kids) {
   const e = document.createElement(tag);
@@ -83,11 +103,15 @@ const REMEDIES = {
   statsSlow: ["aline.team is still working out your developer type. Refresh in a minute."],
   scheduleLocal: ["Local mode has no daily sync: choose automatic sync first.", "Sync settings", "sync"],
   stackUnavailable: ["aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile."],
+  // From lib.rs: an old gitfolio installed on its own is in use.
+  cliTooOld: ["The gitfolio installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own."],
+  // GitFolio called gitfolio wrong: its words are a command's usage, for no user.
+  usage: ["Something went wrong in GitFolio. Please try again, or restart it."],
 };
 
 // An error in words and, when the app solves it, a button to where: inline, for a line of its own.
 function drawError(e) {
-  const [words, action, section] = REMEDIES[e.code] ?? [e.message ?? String(e)];
+  const [words, action, section] = REMEDIES[e.code]?.map((w, i) => (i < 2 ? t(w) : w)) ?? [e.message ?? String(e)];
   return [el("span", "error", words), action ? button(action, () => goTo(section)) : ""];
 }
 
@@ -117,7 +141,7 @@ const fmt = (x) => (x == null || x === "" ? "-" : typeof x === "object" ? JSON.s
 // Any JSON as a table: for answers this app does not lay out on its own.
 function drawValue(v) {
   if (Array.isArray(v)) {
-    if (!v.length) return el("p", "dim", "None.");
+    if (!v.length) return el("p", "dim", t("None."));
     if (!v.every((x) => x && typeof x === "object")) return el("p", "", v.map(fmt).join(", "));
     const keys = [...new Set(v.flatMap(Object.keys))];
     return el("table", "", el("tr", "", ...keys.map((k) => el("th", "", k))),
@@ -131,40 +155,40 @@ function drawValue(v) {
 }
 
 const SCORES = ["agility", "stability", "contribution", "adaptability", "consistency"];
-const title = (k) => k[0].toUpperCase() + k.slice(1);
+const title = (k) => k[0].toUpperCase() + k.slice(1); // "agility" → "Agility", the English of t
 
 // gitfolio stats --json: the developer type, its five scores and the same with AI.
-function drawStats({ type: t, saved, fetchedAt }) {
-  if (!t) return [el("p", "dim", "No developer type yet: aline.team makes it from the commits sent.")];
+function drawStats({ type: d, saved, fetchedAt }) {
+  if (!d) return [el("p", "dim", t("No developer type yet: aline.team makes it from the commits sent."))];
   return [
-    el("h1", "", t.devTypeTitle),
-    el("p", "dim", `${t.dominantPosition ?? "-"} · with AI ${t.devTypeTitleAi ?? "-"}`),
-    el("p", "", t.devTypeDescription ?? ""),
-    el("p", "dim", t.devTypeHashTags ?? ""),
-    el("h2", "", "Scores"),
+    el("h1", "", d.devTypeTitle),
+    el("p", "dim", t("{position} · with AI {type}", { position: d.dominantPosition ?? "-", type: d.devTypeTitleAi ?? "-" })),
+    el("p", "", d.devTypeDescription ?? ""),
+    el("p", "dim", d.devTypeHashTags ?? ""),
+    el("h2", "", t("Scores")),
     ...SCORES.map((k) => {
-      const v = t[k + "Stat"], ai = t[k + "StatAi"];
+      const v = d[k + "Stat"], ai = d[k + "StatAi"];
       const fill = el("div", "");
       fill.style.width = `${v ?? 0}%`;
-      return el("div", "score", el("span", "", title(k)), el("div", "bar", fill),
+      return el("div", "score", el("span", "", t(title(k))), el("div", "bar", fill),
         el("span", "", String(v ?? "-")), el("span", "dim", ai == null ? "" : `AI ${ai}`));
     }),
-    el("p", "dim", saved ? `Saved ${fetchedAt.slice(0, 10)}` : ""),
+    el("p", "dim", saved ? t("Saved {date}", { date: fetchedAt.slice(0, 10) }) : ""),
   ];
 }
 
-const months = (m) => (m == null ? "" : m < 12 ? `${m}m` : `${Math.floor(m / 12)}y ${m % 12}m`);
+const months = (m) => (m == null ? "" : m < 12 ? t("{m}m", { m }) : t("{y}y {m}m", { y: Math.floor(m / 12), m: m % 12 }));
 
 // gitfolio stack --json: the longest used of each kind, `top` of each.
 function drawStack(u, top = 6) {
   const kinds = ["languages", "frameworks", "libraries"].map((k) => [k,
     [...(u[k] ?? [])].sort((a, b) => (b.careerMonths ?? 0) - (a.careerMonths ?? 0)).slice(0, top)]);
-  if (kinds.every(([, items]) => !items.length)) return [el("p", "dim", "No tech stack yet.")];
+  if (kinds.every(([, items]) => !items.length)) return [el("p", "dim", t("No tech stack yet."))];
   return kinds.filter(([, items]) => items.length).flatMap(([k, items]) => [
-    el("h2", "", title(k)),
-    el("div", "chips", ...items.map((t) => {
-      const c = el("span", t.isHidden ? "chip hidden" : "chip", `${t.name} ${months(t.careerMonths)}`);
-      if (t.isHidden) c.title = "Hidden on your aline.team profile";
+    el("h2", "", t(title(k))),
+    el("div", "chips", ...items.map((x) => {
+      const c = el("span", x.isHidden ? "chip hidden" : "chip", `${x.name} ${months(x.careerMonths)}`);
+      if (x.isHidden) c.title = t("Hidden on your aline.team profile");
       return c;
     })),
   ]);
@@ -174,17 +198,17 @@ function drawStack(u, top = 6) {
 function drawScan(r) {
   return r.repositories.map((x) => x.error
     ? el("p", "error", `${x.name}: ${x.error}`)
-    : el("p", "", `${x.name}: ${x.commits} new commits`,
-      x.pendingManifests ? el("span", "dim", ` · ${x.pendingManifests} package manager files to choose in Dependencies`) : ""));
+    : el("p", "", t("{name}: {n} new commits", { name: x.name, n: x.commits }),
+      x.pendingManifests ? el("span", "dim", t(" · {n} package manager files to choose in Dependencies", { n: x.pendingManifests })) : ""));
 }
 
 // gitfolio sync --json, in a sentence or a few.
 function drawSync(r) {
-  const sent = [["commits", r.commits], ["deleted", r.deleted], ["moved", r.moved], ["dependency updates", r.deps]]
-    .filter(([, n]) => n > 0).map(([what, n]) => `${n} ${what}`);
+  const sent = [["{n} commits", r.commits], ["{n} deleted", r.deleted], ["{n} moved", r.moved], ["{n} dependency updates", r.deps]]
+    .filter(([, n]) => n > 0).map(([what, n]) => t(what, { n }));
   return [
-    el("p", "", sent.length ? `Sent ${sent.join(", ")}.` : "Nothing new to send."),
-    ...(r.waiting ?? []).map((w) => el("p", "dim", `${w.namespace} waits until ${w.email} is verified (Account).`)),
+    el("p", "", sent.length ? t("Sent {what}.", { what: sent.join(", ") }) : t("Nothing new to send.")),
+    ...(r.waiting ?? []).map((w) => el("p", "dim", t("{namespace} waits until {email} is verified (Account).", w))),
     ...(r.failed ?? []).map((f) => el("p", "error", `${f.name}: ${f.error}`)),
   ];
 }

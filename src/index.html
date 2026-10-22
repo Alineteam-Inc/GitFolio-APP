@@ -18,6 +18,7 @@
     <div id="progress" class="row dim" hidden></div>
     <section id="stats"></section>
     <section id="stack"></section>
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
     <script>
       if (navigator.userAgent.includes("Mac")) document.documentElement.classList.add("glass"); // see lib.rs
@@ -27,18 +28,18 @@
       // gitfolio status --json, in a line: the account, the sync mode and the last sync.
       function drawState(s) {
         if (!s.setUp) {
-          return [el("p", "", s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits."),
-            el("div", "row", button("Set up", () => open("setup")))];
+          return [el("p", "", t(s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits.")),
+            el("div", "row", button(t("Set up"), () => open("setup")))];
         }
         const local = s.syncMode === "local";
-        const last = s.lastSync ? `last sync ${when(s.lastSync)}` : "not synced yet";
+        const last = s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet");
         const result = el("div", "");
         return [
-          el("p", "dim", `${s.account} · ${local ? "local mode" : "automatic"} · ${last}`),
+          el("p", "dim", `${s.account} · ${t(local ? "local mode" : "automatic")} · ${last}`),
           s.lastSyncError ? el("p", "error", s.lastSyncError) : "",
           // Local mode sends nothing by itself, so what is not sent only grows there.
-          !local && s.unsent ? el("p", "", `${s.unsent} commits not sent yet`) : "",
-          el("div", "row", button("Sync now", () => fill(result, async () => drawSync(await gitfolio("sync"))))),
+          !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
+          el("div", "row", button(t("Sync now"), () => fill(result, async () => drawSync(await gitfolio("sync"))))),
           result,
         ];
       }
@@ -46,6 +47,7 @@
       // The state first, from this computer only; then, with an account, the developer type and stack:
       // one after the other, as each may sync first and the second then finds nothing left to send.
       async function load(refresh) {
+        await readied;
         let s;
         await fill($("state"), async () => drawState((s = await gitfolio("status"))));
         if (!s?.account) return $("stats").replaceChildren(), $("stack").replaceChildren();
@@ -53,7 +55,7 @@
         await fill($("stack"), async () => drawStack(await gitfolio("stack")));
       }
 
-      $("buttons").append(button("Open", () => open("overview")), button("Refresh", () => load(true)));
+      const readied = ready().then(() => $("buttons").append(button(t("Open"), () => open("overview")), button(t("Refresh"), () => load(true))));
       // Once, on the first open, not every time: stats and stack may ask aline.team, and send in local mode.
       window.addEventListener("focus", () => load(false), { once: true });
     </script>

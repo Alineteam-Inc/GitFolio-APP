@@ -21,6 +21,7 @@
     <nav id="nav"></nav>
     <main id="main"></main>
     <div id="progress" class="row dim" hidden></div>
+    <script src="i18n.js"></script>
     <script src="app.js"></script>
     <script>
       function codeInput(length) {
@@ -34,8 +35,8 @@
         const box = el("div", "");
         const email = input("email", "you@example.com");
         const msg = el("p", "");
-        box.replaceChildren(el("p", "", "Log in or sign up to aline.team with a code sent by email."),
-          el("div", "row", email, button("Send code", () => act(msg, send))), msg);
+        box.replaceChildren(el("p", "", t("Log in or sign up to aline.team with a code sent by email.")),
+          el("div", "row", email, button(t("Send code"), () => act(msg, send))), msg);
         async function send() {
           try {
             codeStep(await gitfolio("login", "--email", email.value.trim()));
@@ -50,18 +51,18 @@
           async function finish() {
             const args = ["login", "--email", r.email, "--code", code.value.trim()];
             if (!r.accountExists) {
-              if (!agree.checked) throw { message: "Agree to the terms above to sign up." };
+              if (!agree.checked) throw { message: t("Agree to the terms above to sign up.") };
               args.push("--signup", ...(notify.checked ? ["--notify"] : []));
             }
             await gitfolio(...args);
           }
           box.replaceChildren(
-            el("p", "", `Enter the ${r.codeLength}-digit code sent to ${r.email}.`),
-            ...(r.accountExists ? [] : [el("p", "pre dim", r.signupNotice ?? ""), label(agree, "I agree, and sign up"),
+            el("p", "", t("Enter the {n}-digit code sent to {email}.", { n: r.codeLength, email: r.email })),
+            ...(r.accountExists ? [] : [el("p", "pre dim", r.signupNotice ?? ""), label(agree, t("I agree, and sign up")),
               r.notifyQuestion ? label(notify, r.notifyQuestion) : ""]),
-            el("div", "row", code, button("Log in", () => act(msg, finish, onDone)),
+            el("div", "row", code, button(t("Log in"), () => act(msg, finish, onDone)),
               // codeExpired: too old, or wrong too many times; a new one is needed
-              button("Send a new code", () => act(msg, async () => codeStep(await gitfolio("login", "--email", r.email))))),
+              button(t("Send a new code"), () => act(msg, async () => codeStep(await gitfolio("login", "--email", r.email))))),
             msg);
         }
         return box;
@@ -72,17 +73,17 @@
         const box = el("div", "");
         const draw = () => fill(box, async () => {
           const { emails } = await gitfolio("email");
-          const add = input("email", "another work email"), msg = el("p", "");
+          const add = input("email", t("another work email")), msg = el("p", "");
           const change = (...args) => act(msg, () => gitfolio("email", ...args), draw);
           return [
             el("table", "", ...emails.map((e) => el("tr", "",
               el("td", "", e.email),
-              el("td", "dim", [e.primary && "primary", e.verified && "verified", e.noreply && "no-reply"].filter(Boolean).join(" · ")),
+              el("td", "dim", [e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · ")),
               el("td", "", el("div", "row",
-                e.primary ? "" : button("Make primary", () => change("primary", e.email)),
-                e.verified ? "" : button("Verify…", () => act(msg, () => verify(e.email))),
-                button("Remove", () => change("rm", e.email))))))),
-            el("div", "row", add, button("Add", () => change("add", add.value.trim()))),
+                e.primary ? "" : button(t("Make primary"), () => change("primary", e.email)),
+                e.verified ? "" : button(t("Verify…"), () => act(msg, () => verify(e.email))),
+                button(t("Remove"), () => change("rm", e.email))))))),
+            el("div", "row", add, button(t("Add"), () => change("add", add.value.trim()))),
             msg,
           ];
         });
@@ -91,9 +92,9 @@
           const r = await gitfolio("email", "verify", email);
           if (r.emails) return draw();
           const code = codeInput(r.codeLength), msg = el("p", "");
-          box.replaceChildren(el("p", "", `Enter the ${r.codeLength}-digit code sent to ${email}.`),
-            el("div", "row", code, button("Verify", () => act(msg, () => gitfolio("email", "verify", email, "--code", code.value.trim()), draw)),
-              button("Cancel", draw)),
+          box.replaceChildren(el("p", "", t("Enter the {n}-digit code sent to {email}.", { n: r.codeLength, email })),
+            el("div", "row", code, button(t("Verify"), () => act(msg, () => gitfolio("email", "verify", email, "--code", code.value.trim()), draw)),
+              button(t("Cancel"), draw)),
             msg);
         }
         draw();
@@ -120,15 +121,15 @@
               await find(false); // the commits counted again, by the chosen emails
             };
             return [
-              el("h2", "", "Emails in these repositories"),
-              el("p", "dim", "Commits by the ones you choose count as yours."),
-              ...found.map(([e, c]) => label(c, e.email, el("span", "dim",
-                ` ${e.repositories} repositories${e.work ? " · yours" : ""}${e.verified ? " · verified" : ""}${e.noreply ? " · no-reply" : ""}`))),
-              el("div", "row", button("Use the chosen emails", () => act(msg, useEmails))),
-              el("h2", "", `Repositories with your commits, not collected yet (${repos.length})`),
-              ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` ${r.ownCommits} commits · last ${r.lastCommit} · ${r.path}`))),
-              el("div", "row", button("Add the chosen repositories", () => add(repos.filter(([, c]) => c.checked).map(([r]) => r))),
-                button("Skip", onDone)),
+              el("h2", "", t("Emails in these repositories")),
+              el("p", "dim", t("Commits by the ones you choose count as yours.")),
+              ...found.map(([e, c]) => label(c, e.email, el("span", "dim", " · " + [t("{n} repositories", { n: e.repositories }),
+                e.work && t("yours"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · ")))),
+              el("div", "row", button(t("Use the chosen emails"), () => act(msg, useEmails))),
+              el("h2", "", t("Repositories with your commits, not collected yet ({n})", { n: repos.length })),
+              ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${r.path}`))),
+              el("div", "row", button(t("Add the chosen repositories"), () => add(repos.filter(([, c]) => c.checked).map(([r]) => r))),
+                button(t("Skip"), onDone)),
             ];
           });
         }
@@ -136,7 +137,7 @@
           const errors = [];
           for (const [i, r] of list.entries()) {
             msg.className = "dim";
-            msg.textContent = `Collecting ${r.name} (${i + 1} of ${list.length}); a large one takes a while…`;
+            msg.textContent = t("Collecting {name} ({i} of {n}); a large one takes a while…", { name: r.name, i: i + 1, n: list.length });
             try {
               await gitfolio("add", r.path);
             } catch (e) {
@@ -148,8 +149,8 @@
           if (!errors.length) await onDone();
         }
         find(false);
-        return el("div", "", el("p", "", "Folders to look in for repositories, one per line:"), roots,
-          el("div", "row", button("Find repositories", () => find(true))), out, msg);
+        return el("div", "", el("p", "", t("Folders to look in for repositories, one per line:")), roots,
+          el("div", "row", button(t("Find repositories"), () => find(true))), out, msg);
       }
 
       // One repository's package manager files (deps --json): the ones allowed are read, the others never.
@@ -159,10 +160,10 @@
         const save = () => gitfolio("deps", "review", r.path, ...boxes.flatMap(([f, c]) => (c.checked ? ["--allow", f.path] : [])));
         return el("section", "",
           el("h2", "", r.name),
-          ...boxes.map(([f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", " · new") : "")),
+          ...boxes.map(([f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", ` · ${t("new")}`) : "")),
           r.files.length
-            ? el("div", "row", button("Save", () => act(msg, save, () => { msg.textContent = "Saved."; })))
-            : el("p", "dim", "No package manager files."),
+            ? el("div", "row", button(t("Save"), () => act(msg, save, () => { msg.textContent = t("Saved."); })))
+            : el("p", "dim", t("No package manager files.")),
           msg);
       }
 
@@ -170,12 +171,12 @@
         const purge = checkbox(), msg = el("p", "");
         const remove = async () => {
           const done = await gitfolio("remove", r.path, ...(purge.checked ? ["--purge"] : []));
-          if (done.hooksError) throw { message: `${r.name} is no longer collected, but its earlier hooks could not be put back: ${done.hooksError}` };
+          if (done.hooksError) throw { message: t("{name} is no longer collected, but its earlier hooks could not be put back: {error}", { name: r.name, error: done.hooksError }) };
         };
         box.replaceChildren(
-          el("p", "", `Stop collecting ${r.name} and put back the git hooks it had before?`),
-          label(purge, "Also delete its collected commits, on this computer and on aline.team"),
-          el("div", "row", button("Remove", () => act(msg, remove, () => go("overview"))), button("Cancel", () => box.replaceChildren())),
+          el("p", "", t("Stop collecting {name} and put back the git hooks it had before?", { name: r.name })),
+          label(purge, t("Also delete its collected commits, on this computer and on aline.team")),
+          el("div", "row", button(t("Remove"), () => act(msg, remove, () => go("overview"))), button(t("Cancel"), () => box.replaceChildren())),
           msg);
       }
 
@@ -186,7 +187,7 @@
         if (!s.setUp) return go("setup");
         const local = s.syncMode === "local";
         const result = el("div", ""), adding = el("div", "");
-        const table = el("table", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", "", h))));
+        const table = el("table", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", "", h && t(h)))));
         for (const r of s.repositories) {
           const box = el("div", "");
           const cell = Object.assign(el("td", "", box), { colSpan: 6 });
@@ -194,38 +195,38 @@
             el("tr", "",
               el("td", "", r.name, el("div", "dim", r.path)),
               el("td", "", String(r.commits)),
-              el("td", "", r.namespace === "" ? "never (no remote)" : r.waiting ? "waiting" : String(r.sent)),
-              el("td", "", r.hooks),
+              el("td", "", r.namespace === "" ? t("never (no remote)") : r.waiting ? t("waiting") : String(r.sent)),
+              el("td", "", t(r.hooks)),
               el("td", "", r.lastCommit || "-"),
               el("td", "", el("div", "row",
-                button("Details", () => fill(box, async () => [drawValue(await gitfolio("status", r.path))])),
-                button("Collect again", () => fill(box, async () => drawScan(await gitfolio("scan", r.path)))),
-                button("Remove…", () => confirmRemove(r, box))))),
+                button(t("Details"), () => fill(box, async () => [drawValue(await gitfolio("status", r.path))])),
+                button(t("Collect again"), () => fill(box, async () => drawScan(await gitfolio("scan", r.path)))),
+                button(t("Remove…"), () => confirmRemove(r, box))))),
             el("tr", "", cell));
         }
         main.replaceChildren(
-          el("header", "", el("h1", "", "Overview"), el("div", "row",
-            button("Sync now", () => fill(result, async () => drawSync(await gitfolio("sync")))), button("Refresh", () => go("overview")))),
-          el("p", "", `${s.account} · ${local ? "local mode" : "automatic"}`),
-          el("p", "dim", s.lastSync ? `Last sync ${when(s.lastSync)}` : "Not synced yet"),
+          el("header", "", el("h1", "", t("Overview")), el("div", "row",
+            button(t("Sync now"), () => fill(result, async () => drawSync(await gitfolio("sync")))), button(t("Refresh"), () => go("overview")))),
+          el("p", "", `${s.account} · ${t(local ? "local mode" : "automatic")}`),
+          el("p", "dim", s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet")),
           s.lastSyncError ? el("p", "error", s.lastSyncError) : "",
           // Local mode sends nothing by itself, so what is not sent only grows there.
-          !local && s.unsent ? el("p", "", `${s.unsent} commits not sent yet`) : "",
+          !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
           result,
-          el("h2", "", `Repositories (${s.repositories.length})`),
+          el("h2", "", t("Repositories ({n})", { n: s.repositories.length })),
           table,
-          el("div", "row", button("Add repositories…", () => adding.replaceChildren(finder(() => go("overview"))))),
+          el("div", "row", button(t("Add repositories…"), () => adding.replaceChildren(finder(() => go("overview"))))),
           adding);
       }
 
       async function account(main) {
         const w = await gitfolio("whoami");
         const msg = el("p", "");
-        main.replaceChildren(el("h1", "", "Account"), ...(w.loggedIn
-          ? [el("p", "", `Logged in to aline.team as ${w.email}`),
-            el("div", "row", button("Log out", () => act(msg, () => gitfolio("logout"), () => go("account")))), msg,
-            el("h2", "", "Work emails"),
-            el("p", "dim", "Commits by any of them count as yours, and aline.team gets them all under the primary one. Verified ones merge the repositories linked to them on aline.team."),
+        main.replaceChildren(el("h1", "", t("Account")), ...(w.loggedIn
+          ? [el("p", "", t("Logged in to aline.team as {email}", { email: w.email })),
+            el("div", "row", button(t("Log out"), () => act(msg, () => gitfolio("logout"), () => go("account")))), msg,
+            el("h2", "", t("Work emails")),
+            el("p", "dim", t("Commits by any of them count as yours, and aline.team gets them all under the primary one. Verified ones merge the repositories linked to them on aline.team.")),
             emails()]
           : [loginForm(() => go("account"))]));
       }
@@ -237,21 +238,21 @@
         const mode = (value, text, note) => {
           const r = Object.assign(input("radio"), { name: "mode", checked: (value === "local") === local });
           r.onchange = () => act(msg, () => gitfolio("config", "autosync", value === "local" ? "off" : "on"), () => go("sync"));
-          return label(r, text, el("div", "dim", note));
+          return label(r, t(text), el("div", "dim", t(note)));
         };
         const time = input("time", "", sch.schedule || "09:00");
         const schedule = (...args) => act(msg, () => gitfolio("schedule", ...args), () => go("sync"));
         main.replaceChildren(
-          el("h1", "", "Sync"),
-          el("h2", "", "How commits are sent"),
+          el("h1", "", t("Sync")),
+          el("h2", "", t("How commits are sent")),
           mode("automatic", "Automatic", "Sent to aline.team right after each git push."),
           mode("local", "Local", "Nothing is sent until you sync, or ask for your developer type or stack. The daily sync goes off."),
-          el("h2", "", "Daily sync"),
-          local ? el("p", "dim", "Local mode has no daily sync.") : el("div", "",
-            el("p", "dim", sch.schedule ? `Every day at ${sch.schedule}, for pushes the hooks missed.` : "Off. Once a day at a set time, it sends pushes the hooks missed."),
-            el("div", "row", time, button("Set", () => schedule(time.value)), sch.schedule ? button("Turn off", () => schedule("off")) : "")),
-          el("h2", "", "Last sync"),
-          el("p", "", sch.lastSync ? when(sch.lastSync) : "Not synced yet"),
+          el("h2", "", t("Daily sync")),
+          local ? el("p", "dim", t("Local mode has no daily sync.")) : el("div", "",
+            el("p", "dim", sch.schedule ? t("Every day at {time}, for pushes the hooks missed.", { time: sch.schedule }) : t("Off. Once a day at a set time, it sends pushes the hooks missed.")),
+            el("div", "row", time, button(t("Set"), () => schedule(time.value)), sch.schedule ? button(t("Turn off"), () => schedule("off")) : "")),
+          el("h2", "", t("Last sync")),
+          el("p", "", sch.lastSync ? when(sch.lastSync) : t("Not synced yet")),
           sch.lastSyncError ? el("p", "error", sch.lastSyncError) : "",
           msg);
       }
@@ -264,61 +265,61 @@
         on.onchange = () => set(on.checked ? "on" : "off");
         auto.onchange = () => set("auto", auto.checked ? "on" : "off");
         main.replaceChildren(
-          el("h1", "", "Dependencies"),
-          el("p", "dim", "The packages your repositories use, read only from the package manager files you allow."),
-          label(on, "Detect dependencies", el("div", "dim", "Turning it off deletes the dependencies collected.")),
-          d.on ? label(auto, "Also read them on scan, sync and the daily sync", el("div", "dim", "Pushes never read them.")) : "",
+          el("h1", "", t("Dependencies")),
+          el("p", "dim", t("The packages your repositories use, read only from the package manager files you allow.")),
+          label(on, t("Detect dependencies"), el("div", "dim", t("Turning it off deletes the dependencies collected."))),
+          d.on ? label(auto, t("Also read them on scan, sync and the daily sync"), el("div", "dim", t("Pushes never read them."))) : "",
           msg,
-          ...(d.on ? [el("div", "row", button("Read the files again", () => set("scan", "--all"))), ...d.repositories.map(filesOf)] : []));
+          ...(d.on ? [el("div", "row", button(t("Read the files again"), () => set("scan", "--all"))), ...d.repositories.map(filesOf)] : []));
       }
 
       async function privacy(main) {
         const [{ policy }, cfg] = await Promise.all([gitfolio("init", "--policy"), gitfolio("config")]);
-        const msg = el("p", ""), word = input("text", "a customer or internal project name"), history = el("div", "");
+        const msg = el("p", ""), word = input("text", t("a customer or internal project name")), history = el("div", "");
         const config = (...args) => act(msg, () => gitfolio("config", ...args), () => go("privacy"));
         const record = checkbox(!cfg.gitHistoryOff);
         record.onchange = () => config("git-history", record.checked ? "on" : "off");
         const showHistory = (...all) => fill(history, async () => drawHistory(await gitfolio("history", ...all)));
         const today = () => { const d = new Date(); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, "0")).join("-"); };
         const exported = el("p", "");
-        const save = async () => { exported.textContent = `Saved as ${await call("export", { date: today() })}`; };
+        const save = async () => { exported.textContent = t("Saved as {path}", { path: await call("export", { date: today() }) }); };
         main.replaceChildren(
-          el("h1", "", "Privacy"),
-          el("h2", "", "Data policy"),
+          el("h1", "", t("Privacy")),
+          el("h2", "", t("Data policy")),
           el("p", "pre", policy.trim()),
-          el("h2", "", "Blocked words"),
-          el("p", "dim", "Replaced in everything collected, what is stored already too."),
+          el("h2", "", t("Blocked words")),
+          el("p", "dim", t("Replaced in everything collected, what is stored already too.")),
           el("div", "chips", ...(cfg.mask ?? []).map((w) => el("span", "chip", w, " ", button("×", () => config("mask", "rm", w))))),
-          el("div", "row", word, button("Add", () => config("mask", "add", word.value.trim()))),
-          el("h2", "", "Git commands GitFolio runs"),
-          label(record, "Keep git's own record of them", el("div", "dim", "Turning it off deletes the record.")),
-          el("div", "row", button("Show them", () => showHistory()), button("Show every run kept", () => showHistory("--all"))),
+          el("div", "row", word, button(t("Add"), () => config("mask", "add", word.value.trim()))),
+          el("h2", "", t("Git commands GitFolio runs")),
+          label(record, t("Keep git's own record of them"), el("div", "dim", t("Turning it off deletes the record."))),
+          el("div", "row", button(t("Show them"), () => showHistory()), button(t("Show every run kept"), () => showHistory("--all"))),
           history,
-          el("h2", "", "Everything collected"),
-          el("p", "dim", "The commits, dependencies and statistics collected on this computer, as one JSON file."),
-          el("div", "row", button("Export to Downloads", () => act(exported, save))),
+          el("h2", "", t("Everything collected")),
+          el("p", "dim", t("The commits, dependencies and statistics collected on this computer, as one JSON file.")),
+          el("div", "row", button(t("Export to Downloads"), () => act(exported, save))),
           exported,
           msg);
       }
 
       // gitfolio history --json: each run of gitfolio, newest last, and the git commands it ran.
       function drawHistory(h) {
-        if (!h.on) return [el("p", "dim", "The record is off.")];
-        if (!h.runs.length) return [el("p", "dim", "No git commands recorded yet.")];
-        return [el("p", "dim", `The last ${h.runs.length} of ${h.total} runs.`), ...h.runs.map((r) => el("div", "",
+        if (!h.on) return [el("p", "dim", t("The record is off."))];
+        if (!h.runs.length) return [el("p", "dim", t("No git commands recorded yet."))];
+        return [el("p", "dim", t("The last {n} of {total} runs.", { n: h.runs.length, total: h.total })), ...h.runs.map((r) => el("div", "",
           el("p", "", `${when(r.at)}  ${r.command}`), ...r.git.map((g) => el("p", "dim", `    ${g.at}  ${g.command}`))))];
       }
 
       async function profile(main) {
-        if (!(await gitfolio("status")).account) return main.replaceChildren(el("h1", "", "Profile"), el("p", "", ...drawError({ code: "loginFirst" })));
+        if (!(await gitfolio("status")).account) return main.replaceChildren(el("h1", "", t("Profile")), el("p", "", ...drawError({ code: "loginFirst" })));
         const stats = el("section", ""), stack = el("section", "");
         // One after the other: each may sync first in local mode, and the second then finds nothing left to send.
         const load = async (refresh) => {
           await fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
           await fill(stack, async () => drawStack(await gitfolio("stack"), Infinity));
         };
-        main.replaceChildren(el("header", "", el("h2", "", "Developer type, from aline.team"), button("Refresh", () => load(true))),
-          stats, el("h2", "", "Tech stack"), stack);
+        main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), button(t("Refresh"), () => load(true))),
+          stats, el("h2", "", t("Tech stack")), stack);
         await load(false);
       }
 
@@ -328,30 +329,30 @@
           [path, bundled] = await call("cli_info");
           ({ version } = await gitfolio("version"));
         } catch (e) {
-          problem = e.message ?? String(e); // one installed on its own, too old: the app can still be removed
+          problem = e; // one installed on its own, too old (cliTooOld): the app can still be removed
         }
         const purge = checkbox(), result = el("section", "");
         async function uninstall() {
           try {
             const r = JSON.parse(await call("uninstall", { purge: purge.checked }));
-            result.replaceChildren(el("p", "", "GitFolio was removed."),
+            result.replaceChildren(el("p", "", t("GitFolio was removed.")),
               ...(r.repositories ?? []).filter((x) => x.error).map((x) => el("p", "error", `${x.path}: ${x.error}`)),
-              el("div", "row", button("Quit", () => call("quit"))));
+              el("div", "row", button(t("Quit"), () => call("quit"))));
           } catch (e) {
             result.replaceChildren(el("p", "", ...drawError(e)));
           }
         }
         main.replaceChildren(
-          el("h1", "", "About"),
-          problem ? el("p", "error", problem) : el("p", "", `gitfolio ${version}`,
-            el("div", "dim", `${path} · ${bundled ? "bundled with GitFolio" : "installed on its own"}`)),
-          el("h2", "", "Uninstall"),
-          el("p", "", bundled
+          el("h1", "", t("About")),
+          problem ? el("p", "", ...drawError(problem)) : el("p", "", `gitfolio ${version}`,
+            el("div", "dim", `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`)),
+          el("h2", "", t("Uninstall")),
+          el("p", "", t(bundled
             ? "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app."
-            : "Removes the app. The gitfolio installed on its own stays, with its hooks and settings."),
-          el("p", "dim", "Your data on aline.team stays."),
-          bundled ? label(purge, "Also delete the commits collected on this computer") : "",
-          el("div", "row", button("Uninstall GitFolio", uninstall)),
+            : "Removes the app. The gitfolio installed on its own stays, with its hooks and settings.")),
+          el("p", "dim", t("Your data on aline.team stays.")),
+          bundled ? label(purge, t("Also delete the commits collected on this computer")) : "",
+          el("div", "row", button(t("Uninstall GitFolio"), uninstall)),
           result);
       }
 
@@ -360,30 +361,30 @@
         const steps = [
           async (next) => {
             const { policy } = await gitfolio("init", "--policy");
-            return [el("h1", "", "Welcome to GitFolio"), el("p", "pre", policy.trim()), el("div", "actions", button("Continue", next))];
+            return [el("h1", "", t("Welcome to GitFolio")), el("p", "pre", policy.trim()), el("div", "actions", button(t("Continue"), next))];
           },
-          async (next) => ((await gitfolio("whoami")).loggedIn ? null : [el("h1", "", "Log in or sign up"), loginForm(next)]),
-          async (next) => [el("h1", "", "Choose the repositories to collect"), finder(next)],
+          async (next) => ((await gitfolio("whoami")).loggedIn ? null : [el("h1", "", t("Log in or sign up")), loginForm(next)]),
+          async (next) => [el("h1", "", t("Choose the repositories to collect")), finder(next)],
           async (next) => {
             const msg = el("p", "");
             const pick = (on) => act(msg, () => gitfolio("config", "autosync", on), next);
-            return [el("h1", "", "How should commits be sent?"),
-              el("div", "row", button("Automatic", () => pick("on"))), el("p", "dim", "Sent to aline.team right after each git push."),
-              el("div", "row", button("Local", () => pick("off"))), el("p", "dim", "Nothing is sent until you sync, or ask for your developer type or stack."),
+            return [el("h1", "", t("How should commits be sent?")),
+              el("div", "row", button(t("Automatic"), () => pick("on"))), el("p", "dim", t("Sent to aline.team right after each git push.")),
+              el("div", "row", button(t("Local"), () => pick("off"))), el("p", "dim", t("Nothing is sent until you sync, or ask for your developer type or stack.")),
               msg];
           },
           async (next) => {
             const box = el("div", "");
-            const choose = () => fill(box, async () => [...(await gitfolio("deps", "on")).repositories.map(filesOf), el("div", "actions", button("Continue", next))]);
-            return [el("h1", "", "Detect dependencies?"),
-              el("p", "dim", "The packages your repositories use, read only from the package manager files you allow."),
-              el("div", "row", button("Yes, choose the files", choose), button("No", next)), box];
+            const choose = () => fill(box, async () => [...(await gitfolio("deps", "on")).repositories.map(filesOf), el("div", "actions", button(t("Continue"), next))]);
+            return [el("h1", "", t("Detect dependencies?")),
+              el("p", "dim", t("The packages your repositories use, read only from the package manager files you allow.")),
+              el("div", "row", button(t("Yes, choose the files"), choose), button(t("No"), next)), box];
           },
           async (next) => {
             if ((await gitfolio("status")).syncMode === "local") return null; // local mode has no daily sync
             const time = input("time", "", "09:00"), msg = el("p", "");
-            return [el("h1", "", "A daily sync?"), el("p", "dim", "Once a day at a set time, it sends pushes the hooks missed."),
-              el("div", "row", time, button("Set", () => act(msg, () => gitfolio("schedule", time.value), next)), button("No", next)), msg];
+            return [el("h1", "", t("A daily sync?")), el("p", "dim", t("Once a day at a set time, it sends pushes the hooks missed.")),
+              el("div", "row", time, button(t("Set"), () => act(msg, () => gitfolio("schedule", time.value), next)), button(t("No"), next)), msg];
           },
           async (next) => {
             const s = await gitfolio("status");
@@ -391,10 +392,10 @@
             const result = el("div", "");
             const sync = async () => {
               await fill(result, async () => drawSync(await gitfolio("sync")));
-              result.append(el("div", "actions", button("Done", next)));
+              result.append(el("div", "actions", button(t("Done"), next)));
             };
-            return [el("h1", "", "Send what was collected"), el("p", "dim", `${s.unsent} commits are not sent yet.`),
-              el("div", "row", button("Sync now", sync), button("Later", next)), result];
+            return [el("h1", "", t("Send what was collected")), el("p", "dim", t("{n} commits are not sent yet.", { n: s.unsent })),
+              el("div", "row", button(t("Sync now"), sync), button(t("Later"), next)), result];
           },
         ];
         let i = 0;
@@ -403,9 +404,9 @@
           try {
             const parts = await steps[i](next);
             if (parts === null) return next();
-            main.replaceChildren(el("p", "dim", `Setup · step ${i + 1} of ${steps.length}`), ...parts);
+            main.replaceChildren(el("p", "dim", t("Setup · step {i} of {n}", { i: i + 1, n: steps.length })), ...parts);
           } catch (e) {
-            main.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button("Try again", show)));
+            main.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button(t("Try again"), show)));
           }
         }
         await show();
@@ -422,13 +423,15 @@
         draw(main).catch((e) => main.replaceChildren(el("p", "", ...drawError(e))));
       }
 
-      for (const name of Object.keys(SECTIONS)) {
-        const b = button(title(name), () => go(name));
-        b.dataset.section = name;
-        $("nav").append(b);
-      }
-      window.__TAURI__.event.listen("section", ({ payload }) => go(payload)); // from the tray (lib.rs)
-      go(window.initialSection ?? "overview");
+      ready().then(() => {
+        for (const name of Object.keys(SECTIONS)) {
+          const b = button(t(title(name)), () => go(name));
+          b.dataset.section = name;
+          $("nav").append(b);
+        }
+        window.__TAURI__.event.listen("section", ({ payload }) => go(payload)); // from the tray (lib.rs)
+        go(window.initialSection ?? "overview");
+      });
     </script>
   </body>
 </html>
