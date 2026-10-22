@@ -61,7 +61,7 @@ or newer; otherwise it uses its own.
 Open GitFolio › About › Uninstall first: it removes the git hooks GitFolio added (putting back the
 ones that were there before), its daily sync and this computer's login. Your data on aline.team stays.
 On macOS that removes the app too. On Windows, then remove GitFolio in Settings › Apps › Installed
-apps; on Linux, with your package manager.
+apps; on Linux, `sudo apt remove git-folio` or `sudo dnf remove git-folio`.
 
 ## License and name
 
@@ -131,8 +131,8 @@ GitFolio를 실행합니다. 처음에는 설정이 저절로 열립니다. 데�
 
 먼저 GitFolio › 정보 › 제거를 실행합니다. GitFolio가 추가한 git 훅을 지우고(원래 있던 훅은 되돌립니다),
 매일 동기화와 이 컴퓨터의 로그인을 지웁니다. aline.team의 데이터는 그대로 남습니다. macOS에서는 앱도
-함께 지워집니다. Windows에서는 그다음 설정 › 앱 › 설치된 앱에서, Linux에서는 패키지 관리자로 GitFolio를
-지우세요.
+함께 지워집니다. Windows에서는 그다음 설정 › 앱 › 설치된 앱에서 GitFolio를 지우고, Linux에서는
+`sudo apt remove git-folio` 또는 `sudo dnf remove git-folio`를 실행하세요.
 
 ### 라이선스와 이름
 
