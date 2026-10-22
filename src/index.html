@@ -82,8 +82,8 @@
       // The foot: refresh and sync now at its left, what is not sent yet between; settings (the GitFolio window,
       // its setup until done) and quit at its right.
       const icon = (id, words, f) => Object.assign($(id), { title: words, ariaLabel: words, onclick: f });
-      const readied = ready().then(() => {
-        $("name").textContent = `GitFolio ${VERSION}`.trim();
+      const readied = ready().then(async () => {
+        $("name").textContent = `GitFolio ${await window.__TAURI__.app.getVersion()}`; // the app's own version (the GitFolio CLI's is in About)
         icon("refresh", t("Refresh"), async () => {
           $("refresh").disabled = true;
           await load(true);

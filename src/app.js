@@ -9,13 +9,11 @@ const langOf = (v) => (/^ko/i.test(v ?? "") ? "ko" : /^ja/i.test(v ?? "") ? "ja"
 // (ready) wins, so the app's words and gitfolio's match; until then, or with a gitfolio that does not
 // say, the web view's.
 let LANG = langOf(navigator.language);
-let VERSION = ""; // gitfolio's release, as ready finds it
 
 async function ready() {
   try {
     const v = await gitfolio("version");
     if (v.lang) LANG = langOf(v.lang);
-    VERSION = v.release || v.version;
   } catch {} // an old gitfolio installed on its own: the web view's language stands
   document.documentElement.lang = LANG;
 }
