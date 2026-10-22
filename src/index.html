@@ -22,7 +22,7 @@
     </style>
   </head>
   <body>
-    <header><strong>GitFolio</strong></header>
+    <header><strong id="name">GitFolio</strong><span id="last" class="dim"></span></header>
     <main>
       <section id="state"><p class="dim">…</p></section>
       <section id="result"></section>
@@ -44,17 +44,17 @@
       const open = (section) => call("open", { section });
       const goTo = open; // where an error is solved (app.js): the GitFolio window
 
-      // gitfolio status --json: the account and the sync mode, then the last sync; what is not sent yet in the
-      // foot, by the sync icon. Not set up yet, it says so: the gear opens the setup.
+      // gitfolio status --json: the last sync at the top right, by GitFolio's name; the account and the sync
+      // mode; what is not sent yet in the foot, by the sync icon. Not set up yet, it says so: the gear opens the setup.
       function drawState(s) {
         const local = s.syncMode === "local";
         $("sync").hidden = !s.setUp;
+        $("last").textContent = !s.setUp ? "" : s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet");
         // Local mode sends nothing by itself, so what is not sent only grows there.
         $("unsent").textContent = s.setUp && !local && s.unsent ? t("{n} commits not sent yet", { n: s.unsent }) : "";
         if (!s.setUp) return [el("p", "", t(s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits."))];
         return [
           el("div", "state-line", el("span", "", s.account), el("span", "dim", t(local ? "local mode" : "automatic"))),
-          el("p", "dim right", s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet")),
           s.lastSyncError ? el("p", "error right", s.lastSyncError) : "",
         ];
       }
@@ -68,7 +68,11 @@
         await fill($("state"), async () => drawState((s = await gitfolio("status"))));
         if (!s?.account) return $("stats").replaceChildren(), $("stack").replaceChildren();
         if (byItself && s.syncMode === "local") return;
-        await fill($("stats"), async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
+        let st;
+        await fill($("stats"), async () => drawStats((st = await gitfolio("stats", ...(refresh ? ["--refresh"] : [])))));
+        // The tray icon: the user's developer type's picture.
+        const icon = artPixels(st?.type?.devTypeTitle, 4);
+        if (icon) call("set_tray_icon", icon).catch(() => {});
         await fill($("stack"), async () => drawStack(await gitfolio("stack")));
       }
 
@@ -76,6 +80,7 @@
       // its setup until done) and quit at its right.
       const icon = (id, words, f) => Object.assign($(id), { title: words, ariaLabel: words, onclick: f });
       const readied = ready().then(() => {
+        $("name").textContent = `GitFolio ${VERSION}`.trim();
         icon("refresh", t("Refresh"), async () => {
           $("refresh").disabled = true;
           await load(true);

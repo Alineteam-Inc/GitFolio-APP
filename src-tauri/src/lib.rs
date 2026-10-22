@@ -365,6 +365,29 @@ async fn uninstall(purge: bool) -> Result<String, String> {
     Ok(done)
 }
 
+/// The tray icon as the window drew it (the user's developer type's picture, app.js), kept in the app's config
+/// folder for the next start: width and height (u32, little-endian), then the RGBA pixels.
+const TRAY_ICON: &str = "tray-icon.rgba";
+
+fn show_tray_icon(app: &AppHandle, rgba: &[u8], width: u32, height: u32) -> tauri::Result<()> {
+    match app.tray_by_id("tray") {
+        Some(tray) => tray.set_icon(Some(tauri::image::Image::new(rgba, width, height))),
+        None => Ok(()),
+    }
+}
+
+/// Makes the tray icon the user's developer type's picture, as the window drew it, and keeps it.
+#[tauri::command]
+fn set_tray_icon(app: AppHandle, rgba: Vec<u8>, width: u32, height: u32) -> Result<(), String> {
+    if rgba.len() != (width * height * 4) as usize {
+        return Err("not a picture of that size".into());
+    }
+    let file = app.path().app_config_dir().map_err(|e| e.to_string())?.join(TRAY_ICON);
+    let kept = [&width.to_le_bytes()[..], &height.to_le_bytes(), &rgba].concat();
+    fs::create_dir_all(file.parent().unwrap_or(&file)).and_then(|_| fs::write(&file, kept)).map_err(|e| e.to_string())?;
+    show_tray_icon(&app, &rgba, width, height).map_err(|e| e.to_string())
+}
+
 /// The app's language as set in General ("" follows the device).
 #[tauri::command]
 fn language() -> String {
@@ -524,6 +547,17 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            // The developer type's picture kept from before, rather than the app's icon, until the window draws it anew.
+            if let Ok(kept) = fs::read(app.path().app_config_dir()?.join(TRAY_ICON)) {
+                if kept.len() > 8 {
+                    let size = |at: usize| u32::from_le_bytes(kept[at..at + 4].try_into().unwrap());
+                    let (width, height) = (size(0), size(4));
+                    if kept.len() == 8 + (width * height * 4) as usize {
+                        show_tray_icon(app.handle(), &kept[8..], width, height)?;
+                    }
+                }
+            }
             Ok(())
         })
         .on_window_event(|window, event| match event {
@@ -538,7 +572,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

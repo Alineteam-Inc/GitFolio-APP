@@ -9,11 +9,13 @@ const langOf = (v) => (/^ko/i.test(v ?? "") ? "ko" : /^ja/i.test(v ?? "") ? "ja"
 // (ready) wins, so the app's words and gitfolio's match; until then, or with a gitfolio that does not
 // say, the web view's.
 let LANG = langOf(navigator.language);
+let VERSION = ""; // gitfolio's release, as ready finds it
 
 async function ready() {
   try {
-    const { lang } = await gitfolio("version");
-    if (lang) LANG = langOf(lang);
+    const v = await gitfolio("version");
+    if (v.lang) LANG = langOf(v.lang);
+    VERSION = v.release || v.version;
   } catch {} // an old gitfolio installed on its own: the web view's language stands
   document.documentElement.lang = LANG;
 }
@@ -201,6 +203,21 @@ function drawArt(title, size) {
     art.append(square);
   }
   return art;
+}
+
+// A developer type's picture as pixels, for the tray icon: square, `scale` pixels a square, its rows centred.
+function artPixels(title, scale) {
+  const rows = DEV_TYPE_ART[title];
+  if (!rows) return null;
+  const n = 11 * scale, rgba = new Array(n * n * 4).fill(0), top = Math.floor((11 - rows.length) / 2);
+  rows.forEach((row, y) => [...row].forEach((c, x) => {
+    if (c === ".") return;
+    const rgb = [1, 3, 5].map((i) => parseInt(DEV_TYPE_COLORS[c].slice(i, i + 2), 16));
+    for (let dy = 0; dy < scale; dy++) {
+      for (let dx = 0; dx < scale; dx++) rgba.splice((((top + y) * scale + dy) * n + x * scale + dx) * 4, 4, ...rgb, 255);
+    }
+  }));
+  return { rgba, width: n, height: n };
 }
 
 const SCORES = ["agility", "stability", "contribution", "adaptability", "consistency"];
