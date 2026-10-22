@@ -71,7 +71,7 @@ fn find_cli(own: &Path, dirs: &[PathBuf]) -> Result<(PathBuf, bool), String> {
         Some((_, true)) => Ok((own.to_path_buf(), true)),
         Some((v, false)) if new_enough(&v) => Ok((found, false)),
         v => Err(format!(
-            "{} is gitfolio {}, and GitFolio needs {} or newer: update it the way it was installed (brew upgrade gitfolio, or install.sh).",
+            "The gitfolio installed on this computer ({}) is {}, and GitFolio needs {} or newer. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.",
             found.display(),
             v.map_or("older than 0.6.0".to_string(), |(v, _)| v),
             MIN_CLI.map(|n| n.to_string()).join(".")

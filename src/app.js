@@ -73,24 +73,40 @@ window.__TAURI__.event.listen("progress", ({ payload }) => {
 
 const when = (t) => t.slice(0, 16).replace("T", " "); // RFC3339 in local time → "2026-10-22 09:00"
 
+// gitfolio's errors that the app solves, by code: the app's own words and a button to the section of the
+// GitFolio window that solves it (goTo, of each page). gitfolio's words name its commands, for a terminal.
+const REMEDIES = {
+  loginFirst: ["Log in to aline.team to see this.", "Log in", "account"],
+  alreadyLoggedIn: ["You are logged in already. To use another account, log out first.", "Account", "account"],
+  emailTooMany: ["aline.team takes at most 20 verified work emails: remove one to add another.", "Work emails", "account"],
+  signupConsent: ["This email has no aline.team account yet: agree to the terms to sign up."],
+  statsSlow: ["aline.team is still working out your developer type. Refresh in a minute."],
+  scheduleLocal: ["Local mode has no daily sync: choose automatic sync first.", "Sync settings", "sync"],
+  stackUnavailable: ["aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile."],
+};
+
+// An error in words and, when the app solves it, a button to where: inline, for a line of its own.
+function drawError(e) {
+  const [words, action, section] = REMEDIES[e.code] ?? [e.message ?? String(e)];
+  return [el("span", "error", words), action ? button(action, () => goTo(section)) : ""];
+}
+
 // Draws into `into` the elements `f` gives, or the error it throws.
 async function fill(into, f) {
   try {
     into.replaceChildren(...(await f()));
   } catch (e) {
-    into.replaceChildren(el("p", "error", e.message ?? String(e)));
+    into.replaceChildren(el("p", "", ...drawError(e)));
   }
 }
 
 // Runs `f`, then `after`; an error shows in `msg`.
 async function act(msg, f, after) {
-  msg.className = "";
-  msg.textContent = "";
+  msg.replaceChildren();
   try {
     await f();
   } catch (e) {
-    msg.className = "error";
-    msg.textContent = e.message ?? String(e);
+    msg.replaceChildren(...drawError(e));
     return;
   }
   await after?.();

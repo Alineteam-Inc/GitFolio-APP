@@ -310,6 +310,7 @@
       }
 
       async function profile(main) {
+        if (!(await gitfolio("status")).account) return main.replaceChildren(el("h1", "", "Profile"), el("p", "", ...drawError({ code: "loginFirst" })));
         const stats = el("section", ""), stack = el("section", "");
         // One after the other: each may sync first in local mode, and the second then finds nothing left to send.
         const load = async (refresh) => {
@@ -337,7 +338,7 @@
               ...(r.repositories ?? []).filter((x) => x.error).map((x) => el("p", "error", `${x.path}: ${x.error}`)),
               el("div", "row", button("Quit", () => call("quit"))));
           } catch (e) {
-            result.replaceChildren(el("p", "error", e.message));
+            result.replaceChildren(el("p", "", ...drawError(e)));
           }
         }
         main.replaceChildren(
@@ -404,20 +405,21 @@
             if (parts === null) return next();
             main.replaceChildren(el("p", "dim", `Setup · step ${i + 1} of ${steps.length}`), ...parts);
           } catch (e) {
-            main.replaceChildren(el("p", "error", e.message ?? String(e)), el("div", "row", button("Try again", show)));
+            main.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button("Try again", show)));
           }
         }
         await show();
       }
 
       const SECTIONS = { overview, account, sync, dependencies, privacy, profile, about };
+      const goTo = (section) => go(section); // where an error is solved (app.js)
 
       function go(name) {
         const draw = SECTIONS[name] ?? setup;
         for (const b of $("nav").children) b.className = b.dataset.section === name ? "on" : "";
         const main = $("main");
         main.replaceChildren(el("p", "dim", "…"));
-        draw(main).catch((e) => main.replaceChildren(el("p", "error", e.message ?? String(e))));
+        draw(main).catch((e) => main.replaceChildren(el("p", "", ...drawError(e))));
       }
 
       for (const name of Object.keys(SECTIONS)) {

@@ -24,6 +24,7 @@ th, td { text-align: left; vertical-align: top; padding: 4px 8px 4px 0; border-b
 th { font-weight: normal; opacity: 0.6; }
 .dim { opacity: 0.6; }
 .error { color: #d33; white-space: pre-wrap; }
+p > button { margin-left: 8px; } /* the button that solves an error, after its words */
 .pre { white-space: pre-wrap; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
 .actions { display: flex; gap: 8px; margin-top: 12px; }
