@@ -67,6 +67,28 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .tech img { width: 20px; height: 20px; }
 .tip { position: fixed; z-index: 2; max-width: calc(100vw - 8px); font-size: 11px; padding: 2px 6px; border-radius: 4px; pointer-events: none;
   background: Canvas; color: CanvasText; border: 1px solid rgb(127 127 127 / 0.4); }
+/* The tech timeline: kinds by the categorical palette's first three slots, validated in light and dark (the
+   dataviz method); the light aqua under 3:1 is relieved by every row's name and the icons under it. */
+.timeline { --kind-1: #2a78d6; --kind-2: #eb6834; --kind-3: #1baf7a; margin: 4px 0 14px; }
+@media (prefers-color-scheme: dark) { .timeline { --kind-1: #3987e5; --kind-2: #d95926; --kind-3: #199e70; } }
+.timeline .languages { background: var(--kind-1); }
+.timeline .frameworks { background: var(--kind-2); }
+.timeline .libraries { background: var(--kind-3); }
+.legend { display: flex; gap: 14px; font-size: 11px; margin-bottom: 6px; }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; }
+.tl-body { max-height: 320px; overflow: auto; }
+.tl-axis, .tl-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: center; }
+.tl-axis { position: sticky; top: 0; z-index: 1; background: Canvas; height: 18px; }
+.tl-years { position: relative; height: 100%; font-size: 10px; color: color-mix(in srgb, CanvasText 55%, transparent); }
+.tl-years span { position: absolute; transform: translateX(-50%); }
+.tl-row { height: 22px; }
+.tl-name { display: flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-name img { width: 13px; height: 13px; flex-shrink: 0; }
+.tl-track { position: relative; height: 100%; }
+.tl-track b { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgb(127 127 127 / 0.15); } /* a year's line, recessive */
+.tl-bar { position: absolute; top: 7px; height: 8px; border-radius: 4px; }
+.tl-bar.hidden { opacity: 0.35; }
 .tech .letters { font-size: 10px; font-weight: bold; }
 .tech.hidden { opacity: 0.4; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }

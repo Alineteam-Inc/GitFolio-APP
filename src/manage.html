@@ -472,7 +472,10 @@
         // One after the other: each may sync first in local mode, and the second then finds nothing left to send.
         const load = async (refresh) => {
           await fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
-          await fill(stack, async () => drawStack(await gitfolio("stack")));
+          await fill(stack, async () => {
+            const u = await gitfolio("stack");
+            return [drawTimeline(u), ...drawStack(u)];
+          });
         };
         main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), button(t("Refresh"), () => load(true))),
           stats, el("h2", "", t("Tech stack")), stack);

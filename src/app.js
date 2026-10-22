@@ -317,6 +317,39 @@ function drawFailures(failures) {
   return el("div", "scroll", ...[...by].map(([error, names]) => el("p", "", el("span", "error", error), el("br", ""), el("span", "dim", names.join(", ")))));
 }
 
+// gitfolio stack --json as a timeline: each technology a row, a bar from its first to its last use over the
+// years (each named in its middle, its start a line), its kind by colour (with a legend, and each row named, so not by colour alone); its dates, months
+// and projects on hover. Grouped by kind, the earliest first within one. Ones without dates are left out.
+const KINDS = ["languages", "frameworks", "libraries"];
+function drawTimeline(u) {
+  const at = (d) => (d ? Number(d.slice(0, 4)) * 12 + Number(d.slice(5, 7)) - 1 : null); // "2023-04-14…" → months
+  const rows = KINDS.flatMap((k) => (u[k] ?? []).filter((x) => at(x.startDate) != null)
+    .map((x) => ({ ...x, kind: k, from: at(x.startDate), to: at(x.endDate) ?? at(x.startDate) }))
+    .sort((a, b) => a.from - b.from));
+  if (!rows.length) return "";
+  const first = Math.floor(Math.min(...rows.map((r) => r.from)) / 12), last = Math.floor(Math.max(...rows.map((r) => r.to)) / 12) + 1;
+  const x = (m) => `${((m - first * 12) / ((last - first) * 12)) * 100}%`;
+  const years = Array.from({ length: last - first }, (_, i) => first + i), step = Math.ceil(years.length / 12); // at most 12 named
+  const month = (m) => `${Math.floor(m / 12)}-${String((m % 12) + 1).padStart(2, "0")}`;
+  return el("div", "timeline",
+    el("div", "legend", ...KINDS.filter((k) => rows.some((r) => r.kind === k)).map((k) =>
+      el("span", "", el("i", `swatch ${k}`), t(title(k))))),
+    el("div", "tl-body",
+      el("div", "tl-axis", el("span", ""), el("div", "tl-years", ...years.filter((y) => (y - first) % step === 0)
+        .map((y) => Object.assign(el("span", "", String(y)), { style: `left: ${x(y * 12 + 6 * step)}` })))),
+      ...rows.map((r) => {
+        const icon = TECH_ICONS[r.name.toLowerCase()];
+        const bar = named(Object.assign(el("i", `tl-bar ${r.kind}${r.isHidden ? " hidden" : ""}`), {
+          style: `left: ${x(r.from)}; width: max(6px, calc(${x(r.to + 1)} - ${x(r.from)}))`,
+        }));
+        bar.dataset.name = [r.name, `${month(r.from)} – ${month(r.to)}`, months(r.careerMonths), r.projectCount != null && t("{n} projects", { n: r.projectCount }),
+          r.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
+        return el("div", "tl-row",
+          el("span", "tl-name", icon ? Object.assign(el("img", ""), { src: `icons/tech/${icon}.svg`, alt: "" }) : "", r.name),
+          el("div", "tl-track", ...years.map((y) => Object.assign(el("b", ""), { style: `left: ${x(y * 12)}` })), bar));
+      })));
+}
+
 // gitfolio scan --json: per repository, the commits collected now; the failures together.
 function drawScan(r) {
   return [
