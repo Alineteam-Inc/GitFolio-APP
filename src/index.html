@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GitFolio</title>
     <style>
-      :root { color-scheme: light dark; font: 13px system-ui, sans-serif; }
+      /* Each system's own code font: SF Mono on macOS, Consolas on Windows, Liberation or DejaVu Sans Mono on Linux. */
+      :root { color-scheme: light dark; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace; }
+      :root.glass { background: transparent; } /* the macOS window glass shows through */
       body { margin: 0; padding: 14px; }
     </style>
   </head>
   <body>
     <strong>GitFolio</strong>
+    <script>
+      if (navigator.userAgent.includes("Mac")) document.documentElement.classList.add("glass"); // see lib.rs
+    </script>
   </body>
 </html>

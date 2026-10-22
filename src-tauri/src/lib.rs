@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WindowEvent,
+    AppHandle, Manager, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -27,6 +27,17 @@ pub fn run() {
             // A menu bar app: no Dock icon.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            // The window from tauri.conf.json, glass on macOS like its menu bar menus: Liquid Glass on
+            // macOS 26+, the popover material before. Elsewhere it stays opaque, as there is no glass to show.
+            let win = WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?;
+            #[cfg(target_os = "macos")]
+            let win = {
+                use tauri::window::{Effect, EffectsBuilder};
+                win.transparent(true)
+                    .effects(EffectsBuilder::new().effects([Effect::LiquidGlassRegular, Effect::Popover]).radius(16.0).build())
+            };
+            win.build()?;
 
             // Linux sends no tray click events, so the menu is the way to open the window there.
             let open = MenuItem::with_id(app, "open", "Open GitFolio", true, None::<&str>)?;

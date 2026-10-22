@@ -10,6 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "create": false,
         "title": "GitFolio",
         "width": 360,
         "height": 420,
