@@ -457,7 +457,7 @@ fn glass<'a, R: Runtime, M: Manager<R>>(win: WebviewWindowBuilder<'a, R, M>) -> 
 }
 
 /// Opens the GitFolio window at a section of manage.html, or brings it forward there. On macOS the app
-/// is in the Dock while it is open, as a window to work in. It is an ordinary opaque window, no glass:
+/// has a Dock icon while it is open, as a window to work in, and none otherwise: it runs in the menu bar. It is an ordinary opaque window, no glass:
 /// a window to read and fill in.
 fn open_manage(app: &AppHandle, section: &str) -> tauri::Result<()> {
     let section = if section.chars().all(|c| c.is_ascii_alphanumeric()) { section } else { "overview" };
@@ -467,8 +467,10 @@ fn open_manage(app: &AppHandle, section: &str) -> tauri::Result<()> {
         win.show()?;
         return win.set_focus();
     }
+    // The Dock icon alone, not the app's kind: switching the activation policy back and forth left a Dock
+    // icon behind, "running in background", once the window was closed.
     #[cfg(target_os = "macos")]
-    app.set_activation_policy(tauri::ActivationPolicy::Regular)?;
+    app.set_dock_visibility(true)?;
     let win = WebviewWindowBuilder::from_config(app, &window_config(app, "manage"))?
         .initialization_script(format!("window.initialSection = {section:?};"));
     win.build()?.set_focus()
@@ -568,7 +570,7 @@ pub fn run() {
             // Out of the Dock again, a menu bar app, once the GitFolio window is closed.
             #[cfg(target_os = "macos")]
             WindowEvent::Destroyed if window.label() == "manage" => {
-                let _ = window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+                let _ = window.app_handle().set_dock_visibility(false);
             }
             _ => {}
         })
