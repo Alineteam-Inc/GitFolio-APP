@@ -276,6 +276,13 @@
           adding);
       }
 
+      async function general(main) {
+        const on = checkbox(await call("autostart")), msg = el("p", "");
+        on.onchange = () => act(msg, () => call("set_autostart", { on: on.checked }));
+        main.replaceChildren(el("h1", "", t("General")),
+          label(on, t("Start GitFolio when the computer starts"), el("div", "dim", t("It waits as an icon in the menu bar or the taskbar."))), msg);
+      }
+
       async function account(main) {
         const w = await gitfolio("whoami");
         const msg = el("p", "");
@@ -447,16 +454,20 @@
             async function check() {
               msg.replaceChildren();
               try {
-                const git = await gitfolio("git"), cli = await call("cli_status"), { version } = await gitfolio("version");
-                const need = (n, name, what, ok, todo) => el("section", "",
-                  el("h2", "", `${n}. ${name}`), el("p", "", el("span", ok ? "ok" : "error", ok ? "✓ " : "✗ "), what), ok ? "" : todo);
+                // --latest: gitfolio asks for the newest versions (git's own releases; gitfolio's, unless bundled).
+                const git = await gitfolio("git", "--latest"), cli = await call("cli_status"), ver = await gitfolio("version", "--latest");
+                // Whether it is the newest, softly: a system's git follows later and gets its security fixes apart.
+                const fresh = (x) => x.upToDate === undefined ? "" : el("p", "dim",
+                  x.upToDate ? t("The latest version.") : t("Version {v} is out.", { v: x.latest }), x.updateHint ? ` ${x.updateHint}` : "");
+                const need = (n, name, what, ok, todo, about) => el("section", "",
+                  el("h2", "", `${n}. ${name}`), el("p", "", el("span", ok ? "ok" : "error", ok ? "✓ " : "✗ "), what), ok ? about : todo);
                 box.replaceChildren(
                   el("p", "", t("GitFolio needs two things on this computer, installed in this order.")),
-                  need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found, el("p", "dim", t("git was not found on this computer."))),
-                  need(2, `gitfolio ${version}`, t(cli.bundled
+                  need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found, el("p", "dim", t("git was not found on this computer.")), fresh(git)),
+                  need(2, `gitfolio ${ver.version}`, t(cli.bundled
                     ? "Collects your commits in the background when you push, through git hooks. It comes with GitFolio."
                     : "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used."),
-                  cli.installed, git.found ? "" : el("p", "dim", t("Install git first."))),
+                  cli.installed, git.found ? "" : el("p", "dim", t("Install git first.")), fresh(ver)),
                   msg);
                 bar.replaceChildren(button(t("Check again"), check), !git.found
                   ? button(t("Install git"), () => act(msg, installGit))
@@ -539,7 +550,7 @@
         await show();
       }
 
-      const SECTIONS = { overview, account, sync, dependencies, privacy, profile, policy, about };
+      const SECTIONS = { overview, general, account, sync, dependencies, privacy, profile, policy, about };
       const LABELS = { policy: "Data policy" }; // the menu's words where they are not the section's name
       const goTo = (section) => go(section); // where an error is solved (app.js)
 

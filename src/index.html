@@ -6,18 +6,31 @@
     <title>GitFolio</title>
     <link rel="stylesheet" href="app.css" />
     <style>
+      /* The content scrolls between the name and the foot; the foot's icons stay put. */
+      body { display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+      main { flex: 1; overflow: auto; }
       #state { margin-bottom: 8px; }
+      footer { display: flex; align-items: center; gap: 4px; padding-top: 8px; border-top: 1px solid rgb(127 127 127 / 0.2); }
+      footer .spacer { flex: 1; }
+      footer button { min-width: 32px; width: 32px; padding: 0; background: transparent; display: grid; place-items: center; }
+      footer button:hover { background: rgb(127 127 127 / 0.2); }
+      footer svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     </style>
   </head>
   <body>
-    <header>
-      <strong>GitFolio</strong>
-      <span class="row" id="buttons"></span>
-    </header>
-    <section id="state"><p class="dim">…</p></section>
-    <div id="progress" class="row dim" hidden></div>
-    <section id="stats"></section>
-    <section id="stack"></section>
+    <header><strong>GitFolio</strong></header>
+    <main>
+      <section id="state"><p class="dim">…</p></section>
+      <div id="progress" class="row dim" hidden></div>
+      <section id="stats"></section>
+      <section id="stack"></section>
+    </main>
+    <footer>
+      <button id="refresh"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v5h-5" /></svg></button>
+      <span class="spacer"></span>
+      <button id="settings"><svg viewBox="0 0 24 24"><path d="M19.3 9.8 L21.8 10.0 L21.8 14.0 L19.3 14.2 L18.7 15.5 L20.3 17.5 L17.5 20.3 L15.5 18.7 L14.2 19.3 L14.0 21.8 L10.0 21.8 L9.8 19.3 L8.5 18.7 L6.5 20.3 L3.7 17.5 L5.3 15.5 L4.7 14.2 L2.2 14.0 L2.2 10.0 L4.7 9.8 L5.3 8.5 L3.7 6.5 L6.5 3.7 L8.5 5.3 L9.8 4.7 L10.0 2.2 L14.0 2.2 L14.2 4.7 L15.5 5.3 L17.5 3.7 L20.3 6.5 L18.7 8.5 Z" /><circle cx="12" cy="12" r="3" /></svg></button>
+      <button id="quit"><svg viewBox="0 0 24 24"><path d="M12 3v9" /><path d="M6.3 6.3a8 8 0 1 0 11.4 0" /></svg></button>
+    </footer>
     <script src="i18n.js"></script>
     <script src="app.js"></script>
     <script>
@@ -25,12 +38,10 @@
       const open = (section) => call("open", { section });
       const goTo = open; // where an error is solved (app.js): the GitFolio window
 
-      // gitfolio status --json, in a line: the account, the sync mode and the last sync.
+      // gitfolio status --json, in a line: the account, the sync mode and the last sync. Not set up yet,
+      // it says so: the gear opens the setup.
       function drawState(s) {
-        if (!s.setUp) {
-          return [el("p", "", t(s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits.")),
-            el("div", "row", button(t("Set up"), () => open("setup")))];
-        }
+        if (!s.setUp) return [el("p", "", t(s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits."))];
         const local = s.syncMode === "local";
         const last = s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet");
         const result = el("div", "");
@@ -45,19 +56,32 @@
       }
 
       // The state first, from this computer only; then, with an account, the developer type and stack:
-      // one after the other, as each may sync first and the second then finds nothing left to send.
-      async function load(refresh) {
+      // one after the other, as each may sync first and the second then finds nothing left to send. A daily
+      // refresh by itself leaves them be in local mode, where asking for them sends what was collected.
+      async function load(refresh, byItself = false) {
         await readied;
         let s;
         await fill($("state"), async () => drawState((s = await gitfolio("status"))));
         if (!s?.account) return $("stats").replaceChildren(), $("stack").replaceChildren();
+        if (byItself && s.syncMode === "local") return;
         await fill($("stats"), async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
         await fill($("stack"), async () => drawStack(await gitfolio("stack")));
       }
 
-      const readied = ready().then(() => $("buttons").append(button(t("Open"), () => open("overview")), button(t("Refresh"), () => load(true))));
-      // Once, on the first open, not every time: stats and stack may ask aline.team, and send in local mode.
+      // The foot: refresh at its left; settings (the GitFolio window, its setup until done) and quit at its right.
+      const icon = (id, words, f) => Object.assign($(id), { title: words, ariaLabel: words, onclick: f });
+      const readied = ready().then(() => {
+        icon("refresh", t("Refresh"), async () => {
+          $("refresh").disabled = true;
+          await load(true);
+          $("refresh").disabled = false;
+        });
+        icon("settings", t("Settings"), () => open("overview"));
+        icon("quit", t("Quit"), () => call("quit"));
+      });
+      // Once on the first open, then once a day: stats and stack may ask aline.team.
       window.addEventListener("focus", () => load(false), { once: true });
+      setInterval(() => load(true, true), 24 * 60 * 60 * 1000);
     </script>
   </body>
 </html>

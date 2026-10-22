@@ -11,6 +11,7 @@ use tauri::{
     utils::config::WindowConfig,
     AppHandle, Emitter, Manager, Runtime, Webview, WebviewWindowBuilder, WindowEvent,
 };
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -326,6 +327,18 @@ async fn uninstall(purge: bool) -> Result<String, String> {
     Ok(done)
 }
 
+/// Whether the app starts with the computer (General).
+#[tauri::command]
+fn autostart(app: AppHandle) -> Result<bool, String> {
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_autostart(app: AppHandle, on: bool) -> Result<(), String> {
+    let launch = app.autolaunch();
+    if on { launch.enable() } else { launch.disable() }.map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn quit(app: AppHandle) {
     app.exit(0);
@@ -384,6 +397,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_dialog::init())
+        // A Launch Agent on macOS: a file in ~/Library/LaunchAgents, nothing asked of the system's login items.
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .setup(|app| {
             // A menu bar app: no Dock icon.
             #[cfg(target_os = "macos")]
@@ -400,6 +415,14 @@ pub fn run() {
             }
 
             glass(WebviewWindowBuilder::from_config(app, &window_config(app.handle(), "main"))?).build()?;
+
+            // Starting with the computer is on unless the user turns it off: turned on once, the first time
+            // the app runs (a mark in its own config folder says it was), then as the user sets it (General).
+            let mark = app.path().app_config_dir()?.join("autostart-set");
+            if !mark.exists() {
+                let _ = app.autolaunch().enable();
+                let _ = fs::create_dir_all(mark.parent().unwrap_or(&mark)).and_then(|_| fs::write(&mark, ""));
+            }
 
             // Until GitFolio is set up (and the first time), its setup opens by itself, as an installer
             // would: installing GitFolio goes on there. Off the main thread, as it asks gitfolio first.
@@ -453,7 +476,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, autostart, set_autostart, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
