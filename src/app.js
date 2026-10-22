@@ -317,9 +317,11 @@ function drawFailures(failures) {
   return el("div", "scroll", ...[...by].map(([error, names]) => el("p", "", el("span", "error", error), el("br", ""), el("span", "dim", names.join(", ")))));
 }
 
-// gitfolio stack --json as a timeline: each technology a row, a bar from its first to its last use over the
-// months from the earliest start to the latest end (each year's start a line, named after it), its kind by colour
-// (with a legend, and each row named, so not by colour alone); its dates, months and projects on hover. Grouped by kind, the earliest first within one. Ones without dates are left out.
+// gitfolio stack --json as a timeline: each technology a row, a bar for each run of months it was used in
+// (activityMonths; without them, one from its first to its last use), over the months from the earliest start
+// to the latest end (each year's start a line, named after it). Its kind by colour (with a legend, and each row
+// named, so not by colour alone); its dates, months and projects on hover. Grouped by kind, the earliest first
+// within one. Ones without dates are left out.
 const KINDS = ["languages", "frameworks", "libraries"];
 function drawTimeline(u) {
   const at = (d) => (d ? Number(d.slice(0, 4)) * 12 + Number(d.slice(5, 7)) - 1 : null); // "2023-04-14…" → months
@@ -342,14 +344,19 @@ function drawTimeline(u) {
         .map((y) => Object.assign(el("span", "", String(y)), { style: `left: ${x(Math.max(first, y * 12))}` })))),
       ...rows.map((r) => {
         const icon = TECH_ICONS[r.name.toLowerCase()];
-        const bar = named(Object.assign(el("i", `tl-bar ${r.kind}${r.isHidden ? " hidden" : ""}`), {
-          style: `left: ${x(r.from)}; width: max(6px, calc(${x(r.to + 1)} - ${x(r.from)}))`,
-        }));
-        bar.dataset.name = [r.name, `${month(r.from)} – ${month(r.to)}`, months(r.careerMonths), r.projectCount != null && t("{n} projects", { n: r.projectCount }),
-          r.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
+        const runs = (r.activityMonths ?? []).map(at).reduce((rs, m) => // ["2023-04", "2023-05", "2023-08"] → [[04, 05], [08, 08]]
+          (rs.length && m === rs.at(-1)[1] + 1 ? (rs.at(-1)[1] = m) : rs.push([m, m]), rs), []);
+        const bars = (runs.length ? runs : [[r.from, r.to]]).map(([a, b]) => {
+          const bar = named(Object.assign(el("i", `tl-bar ${r.kind}${r.isHidden ? " hidden" : ""}`), {
+            style: `left: ${x(a)}; width: max(6px, calc(${x(b + 1)} - ${x(a)}))`,
+          }));
+          bar.dataset.name = [r.name, a === b ? month(a) : `${month(a)} – ${month(b)}`, months(r.careerMonths),
+            r.projectCount != null && t("{n} projects", { n: r.projectCount }), r.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
+          return bar;
+        });
         return el("div", "tl-row",
           el("span", "tl-name", icon ? Object.assign(el("img", ""), { src: `icons/tech/${icon}.svg`, alt: "" }) : "", r.name),
-          el("div", "tl-track", ...years.filter((y) => y * 12 > first).map((y) => Object.assign(el("b", ""), { style: `left: ${x(y * 12)}` })), bar));
+          el("div", "tl-track", ...years.filter((y) => y * 12 > first).map((y) => Object.assign(el("b", ""), { style: `left: ${x(y * 12)}` })), ...bars));
       })));
 }
 
