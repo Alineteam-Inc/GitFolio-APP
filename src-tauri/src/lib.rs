@@ -13,8 +13,9 @@ use tauri::{
     AppHandle, Emitter, Manager, Runtime, Webview, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_positioner::{Position, WindowExt};
+use tauri_plugin_updater::UpdaterExt;
 
 // Under the tray icon: the menu bar is at the top on macOS, the taskbar at the bottom elsewhere.
 #[cfg(target_os = "macos")]
@@ -77,6 +78,29 @@ fn menu_words(lang: &str) -> [&'static str; 3] {
         "ko" => ["GitFolio 열기", "GitFolio 제거…", "종료"],
         "ja" => ["GitFolioを開く", "GitFolioをアンインストール…", "終了"],
         _ => ["Open GitFolio", "Uninstall GitFolio…", "Quit"],
+    }
+}
+
+fn update_words(lang: &str, new: &str, now: &str) -> (String, &'static str, &'static str) {
+    match lang {
+        "ko" => (format!("GitFolio {new}이(가) 나왔습니다. 지금 버전은 {now}입니다.\n지금 업데이트할까요? 업데이트한 뒤 GitFolio가 다시 시작됩니다."), "업데이트", "나중에"),
+        "ja" => (format!("GitFolio {new}が公開されました。現在のバージョンは{now}です。\n今すぐアップデートしますか?アップデート後にGitFolioが再起動します。"), "アップデート", "後で"),
+        _ => (format!("GitFolio {new} is out. You have {now}.\nUpdate now? GitFolio starts again after."), "Update", "Later"),
+    }
+}
+
+/// A newer GitFolio from its releases (tauri.conf.json plugins.updater), offered in gitfolio's language: a
+/// yes downloads it, checks its signature, installs it (on Linux, through the system's password prompt)
+/// and starts it again; a no asks again the next day.
+fn offer_update(app: &AppHandle) {
+    let Some(update) = tauri::async_runtime::block_on(async { app.updater().ok()?.check().await.ok()? }) else {
+        return;
+    };
+    let lang = cli().map(|(cli, _)| lang_of(&cli)).unwrap_or_default();
+    let (text, yes, no) = update_words(&lang, &update.version, &update.current_version);
+    let asked = app.dialog().message(text).title("GitFolio").buttons(MessageDialogButtons::OkCancelCustom(yes.into(), no.into()));
+    if asked.blocking_show() && tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {})).is_ok() {
+        app.restart();
     }
 }
 
@@ -490,6 +514,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // A Launch Agent on macOS: a file in ~/Library/LaunchAgents, nothing asked of the system's login items.
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             // A menu bar app: no Dock icon.
             #[cfg(target_os = "macos")]
@@ -525,6 +550,15 @@ pub fn run() {
                     let _ = open_manage(&handle, "setup");
                 }
             });
+
+            // A newer GitFolio, looked for at the start and then once a day; not by a development build.
+            if !cfg!(debug_assertions) {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || loop {
+                    offer_update(&handle);
+                    std::thread::sleep(std::time::Duration::from_secs(24 * 60 * 60));
+                });
+            }
 
             // The language set in General, kept in the app's config folder.
             *LANG.lock().unwrap() = fs::read_to_string(app.path().app_config_dir()?.join("language")).unwrap_or_default();

@@ -39,7 +39,9 @@ sudo apt install ./GitFolio_linux_amd64.deb
 or `sudo dnf install ./GitFolio_linux_amd64.rpm`. The tray icon needs AppIndicator support (on GNOME,
 the "AppIndicator and KStatusNotifierItem Support" extension); its menu opens the GitFolio window.
 
-**Update:** install the newer package over the old one; your settings and repositories stay.
+**Update:** GitFolio looks for a new version when it starts and once a day, and asks before updating.
+It checks the download's signature, installs it (on Linux, after your password) and starts again; your
+settings and repositories stay. Installing a newer package over the old one works too.
 
 **Check a download:** every release has `checksums.txt`, and
 `gh attestation verify <package> -R Alineteam-Inc/GitFolio-GUI` proves a package was built from this source.
@@ -111,7 +113,9 @@ sudo apt install ./GitFolio_linux_amd64.deb
 또는 `sudo dnf install ./GitFolio_linux_amd64.rpm`. 트레이 아이콘에는 AppIndicator 지원이 필요합니다
 (GNOME에서는 "AppIndicator and KStatusNotifierItem Support" 확장). 아이콘 메뉴에서 GitFolio 창을 엽니다.
 
-**업데이트:** 새 패키지를 기존 것 위에 설치하면 됩니다. 설정과 저장소는 그대로 남습니다.
+**업데이트:** GitFolio는 시작할 때와 하루에 한 번 새 버전을 확인하고, 업데이트할지 묻습니다. 내려받은 파일의
+서명을 확인해 설치하고(Linux에서는 비밀번호를 입력한 뒤) 다시 시작합니다. 설정과 저장소는 그대로 남습니다. 새
+패키지를 기존 것 위에 설치해도 됩니다.
 
 **내려받은 파일 확인:** 릴리스마다 `checksums.txt`가 있고,
 `gh attestation verify <패키지> -R Alineteam-Inc/GitFolio-GUI`로 이 소스에서 빌드된 것인지 확인할 수 있습니다.
