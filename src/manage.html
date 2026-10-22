@@ -363,26 +363,30 @@
           async (next) => {
             const box = el("div", "");
             const check = () => fill(box, async () => {
-              let git = true; // a gitfolio command needing git answers noGit without it
-              try {
-                await gitfolio("config");
-              } catch (e) {
-                if (e.code !== "noGit") throw e;
-                git = false;
-              }
-              const cli = await call("cli_status");
-              const msg = el("p", "");
+              const git = await gitfolio("git"), cli = await call("cli_status");
+              const msg = el("div", "");
+              // gitfolio starts git's own installer (macOS, Windows with winget), or says how (manual).
+              const installGit = async () => {
+                const r = await gitfolio("git", "install");
+                if (r.how === "manual") {
+                  return msg.replaceChildren(el("p", "", r.message ?? ""),
+                    r.url ? el("div", "row", button(t("Open the download page"), () => call("open_url", { url: r.url }))) : "");
+                }
+                if (r.how === "xcodeSelect") return msg.replaceChildren(el("p", "", t("Follow the installer that opened, then check again.")));
+                await check(); // winget is done, or git was there already
+              };
               const need = (n, name, what, ok, todo) => el("section", "",
                 el("h2", "", `${n}. ${name}`), el("p", "", el("span", ok ? "ok" : "error", ok ? "✓ " : "✗ "), what), ok ? "" : todo);
               return [
                 el("p", "", t("GitFolio needs two things on this computer, installed in this order.")),
-                need(1, "git", t("Reads your commits."), git, el("p", "", t("git was not found on this computer. Install it first, then check again."))),
+                need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found,
+                  el("div", "row", el("span", "", t("git was not found on this computer.")), button(t("Install git"), () => act(msg, installGit)))),
                 need(2, "gitfolio", t(cli.bundled
                   ? "Collects your commits in the background when you push, through git hooks. It comes with GitFolio."
                   : "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used."),
-                cli.installed, git ? el("div", "row", button(t("Install gitfolio"), () => act(msg, () => call("install_cli"), check))) : el("p", "dim", t("Install git first."))),
+                cli.installed, git.found ? el("div", "row", button(t("Install gitfolio"), () => act(msg, () => call("install_cli"), check))) : el("p", "dim", t("Install git first."))),
                 msg,
-                el("div", "actions", button(t("Check again"), check), git && cli.installed ? button(t("Continue"), next) : ""),
+                el("div", "actions", button(t("Check again"), check), git.found && cli.installed ? button(t("Continue"), next) : ""),
               ];
             });
             await check();

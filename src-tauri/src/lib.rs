@@ -192,7 +192,7 @@ fn allowed(args: &[String]) -> bool {
         Some("login") => has("--email"),
         Some(c) => [
             "logout", "whoami", "add", "remove", "scan", "sync", "status", "stats", "stack", "export", "deps", "config",
-            "history", "email", "schedule", "version",
+            "history", "email", "schedule", "version", "git",
         ]
         .contains(&c),
         None => false,
@@ -260,6 +260,23 @@ fn install_cli() -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Opens a web page in the browser: an https address only, as the git download page gitfolio names.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") {
+        return Err(format!("not a web page: {url}"));
+    }
+    #[cfg(target_os = "macos")]
+    let mut open = Command::new("open");
+    #[cfg(windows)]
+    let mut open = Command::new("rundll32"); // the shell's own opener, with no command line to quote
+    #[cfg(windows)]
+    open.arg("url.dll,FileProtocolHandler");
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut open = Command::new("xdg-open");
+    open.arg(&url).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
 /// Saves what `gitfolio export` prints as gitfolio-export-<date>.json in the Downloads folder, and
@@ -416,7 +433,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, export, open, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, export, open, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
