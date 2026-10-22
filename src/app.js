@@ -103,6 +103,7 @@ const REMEDIES = {
   statsSlow: ["aline.team is still working out your developer type. Refresh in a minute."],
   scheduleLocal: ["Local mode has no daily sync: choose automatic sync first.", "Sync settings", "sync"],
   stackUnavailable: ["aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile."],
+  noGit: ["git is needed and was not found on this computer.", "Set up", "setup"],
   // From lib.rs: an old gitfolio installed on its own is in use.
   cliTooOld: ["The gitfolio installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own."],
   // GitFolio called gitfolio wrong: its words are a command's usage, for no user.

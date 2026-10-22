@@ -225,10 +225,41 @@ async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String>
     run_cli(&cli, &args.iter().map(String::as_str).collect::<Vec<_>>(), progress)
 }
 
-/// The gitfolio in use and whether it is the bundled one (see find_cli), or why none can be.
+/// Whether the bundled gitfolio may be linked: by a release, or by a development build started with a
+/// temporary HOME (a test one), never over the gitfolio in real use.
+#[cfg(unix)]
+fn may_link() -> bool {
+    let real = |p: PathBuf| p.canonicalize().unwrap_or(p);
+    let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+    !cfg!(debug_assertions) || real(home).starts_with(real(std::env::temp_dir()))
+}
+
+/// The gitfolio in use (see find_cli), for the windows: its path, whether it is the bundled one, and
+/// whether git hooks find it, which the bundled one does once installed (see install_cli).
 #[tauri::command]
-fn cli_info() -> Result<(PathBuf, bool), String> {
-    cli()
+fn cli_status() -> Result<serde_json::Value, String> {
+    let (path, bundled) = cli()?;
+    #[cfg(unix)]
+    let installed = !bundled || link_path().is_some_and(|at| same(&at, &path));
+    // ponytail: Windows puts the CLI's folder on PATH with its installer, to come with its packaging.
+    #[cfg(not(unix))]
+    let installed = true;
+    Ok(serde_json::json!({"path": path, "bundled": bundled, "installed": installed}))
+}
+
+/// Installs the bundled gitfolio for git hooks to find, as the user agreed in the setup: links it (see link).
+#[tauri::command]
+fn install_cli() -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        if !may_link() {
+            return Err("This development build installs gitfolio only in its test folder.".into());
+        }
+        if let (Ok((own, true)), Some(at)) = (cli(), link_path()) {
+            link(&own, &at).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 /// Saves what `gitfolio export` prints as gitfolio-export-<date>.json in the Downloads folder, and
@@ -332,11 +363,14 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-            // A release whose bundled gitfolio is the one in use links it for git hooks to find. Errors
-            // are let go: a scan or the daily sync still collects what the hooks miss meanwhile.
+            // The link installed in the setup (install_cli) is mended when the app moved: link replaces
+            // only a link to nothing or to another copy of the app's. Errors are let go: a scan or the
+            // daily sync still collects what the hooks miss meanwhile.
             #[cfg(unix)]
-            if let (false, Ok((cli, true)), Some(at)) = (cfg!(debug_assertions), cli(), link_path()) {
-                let _ = link(&cli, &at);
+            if let (true, Ok((cli, true)), Some(at)) = (may_link(), cli(), link_path()) {
+                if fs::symlink_metadata(&at).is_ok() {
+                    let _ = link(&cli, &at);
+                }
             }
 
             glass(WebviewWindowBuilder::from_config(app, &window_config(app.handle(), "main"))?).build()?;
@@ -382,7 +416,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_info, export, open, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, export, open, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

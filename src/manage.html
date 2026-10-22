@@ -326,7 +326,7 @@
       async function about(main) {
         let path, bundled, version, problem;
         try {
-          [path, bundled] = await call("cli_info");
+          ({ path, bundled } = await call("cli_status"));
           ({ version } = await gitfolio("version"));
         } catch (e) {
           problem = e; // one installed on its own, too old (cliTooOld): the app can still be removed
@@ -359,6 +359,35 @@
       // The first-time setup, as gitfolio init asks it: a step answering null is skipped.
       async function setup(main) {
         const steps = [
+          // GitFolio's two needs, in the order they are installed: git, then gitfolio for git hooks.
+          async (next) => {
+            const box = el("div", "");
+            const check = () => fill(box, async () => {
+              let git = true; // a gitfolio command needing git answers noGit without it
+              try {
+                await gitfolio("config");
+              } catch (e) {
+                if (e.code !== "noGit") throw e;
+                git = false;
+              }
+              const cli = await call("cli_status");
+              const msg = el("p", "");
+              const need = (n, name, what, ok, todo) => el("section", "",
+                el("h2", "", `${n}. ${name}`), el("p", "", el("span", ok ? "ok" : "error", ok ? "✓ " : "✗ "), what), ok ? "" : todo);
+              return [
+                el("p", "", t("GitFolio needs two things on this computer, installed in this order.")),
+                need(1, "git", t("Reads your commits."), git, el("p", "", t("git was not found on this computer. Install it first, then check again."))),
+                need(2, "gitfolio", t(cli.bundled
+                  ? "Collects your commits in the background when you push, through git hooks. It comes with GitFolio."
+                  : "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used."),
+                cli.installed, git ? el("div", "row", button(t("Install gitfolio"), () => act(msg, () => call("install_cli"), check))) : el("p", "dim", t("Install git first."))),
+                msg,
+                el("div", "actions", button(t("Check again"), check), git && cli.installed ? button(t("Continue"), next) : ""),
+              ];
+            });
+            await check();
+            return [el("h1", "", t("Before you start")), box];
+          },
           async (next) => {
             const { policy } = await gitfolio("init", "--policy");
             return [el("h1", "", t("Welcome to GitFolio")), el("p", "pre", policy.trim()), el("div", "actions", button(t("Continue"), next))];

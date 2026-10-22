@@ -183,6 +183,16 @@ const MESSAGES = {
     "The gitfolio installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.":
       "이 컴퓨터에 설치된 gitfolio가 GitFolio에 비해 오래되었습니다. 설치한 곳(Homebrew 또는 설치 스크립트)에서 업데이트하거나, 삭제하면 GitFolio에 포함된 것을 씁니다.",
     "Something went wrong in GitFolio. Please try again, or restart it.": "GitFolio에 문제가 생겼습니다. 다시 시도하거나 다시 시작해 주세요.",
+    "git is needed and was not found on this computer.": "git이 필요하지만 이 컴퓨터에서 찾지 못했습니다.",
+    "GitFolio needs two things on this computer, installed in this order.": "GitFolio를 쓰려면 이 컴퓨터에 두 가지가 필요하며, 이 순서로 설치합니다.",
+    "Reads your commits.": "커밋을 읽습니다.",
+    "git was not found on this computer. Install it first, then check again.": "이 컴퓨터에서 git을 찾지 못했습니다. 먼저 설치한 뒤 다시 확인하세요.",
+    "Collects your commits in the background when you push, through git hooks. It comes with GitFolio.": "push할 때 git 훅으로 백그라운드에서 커밋을 수집합니다. GitFolio에 포함되어 있습니다.",
+    "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used.": "push할 때 git 훅으로 백그라운드에서 커밋을 수집합니다. 이 컴퓨터에 설치된 것을 씁니다.",
+    "Install gitfolio": "gitfolio 설치",
+    "Install git first.": "먼저 git을 설치하세요.",
+    "Check again": "다시 확인",
+    "Before you start": "시작하기 전에",
   },
   ja: {
     // app.js
@@ -366,5 +376,15 @@ const MESSAGES = {
     "The gitfolio installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.":
       "このコンピューターにインストールされたgitfolioはGitFolioには古すぎます。インストール元(Homebrewまたはインストールスクリプト)で更新するか、アンインストールするとGitFolioに同梱のものを使います。",
     "Something went wrong in GitFolio. Please try again, or restart it.": "GitFolioで問題が発生しました。もう一度試すか、再起動してください。",
+    "git is needed and was not found on this computer.": "gitが必要ですが、このコンピューターで見つかりませんでした。",
+    "GitFolio needs two things on this computer, installed in this order.": "GitFolioには、このコンピューターに次の2つが必要です。この順にインストールします。",
+    "Reads your commits.": "コミットを読み取ります。",
+    "git was not found on this computer. Install it first, then check again.": "このコンピューターでgitが見つかりませんでした。先にインストールしてから、もう一度確認してください。",
+    "Collects your commits in the background when you push, through git hooks. It comes with GitFolio.": "push時にgitフックでバックグラウンドからコミットを収集します。GitFolioに同梱されています。",
+    "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used.": "push時にgitフックでバックグラウンドからコミットを収集します。このコンピューターにインストール済みのものを使います。",
+    "Install gitfolio": "gitfolioをインストール",
+    "Install git first.": "先にgitをインストールしてください。",
+    "Check again": "もう一度確認",
+    "Before you start": "始める前に",
   },
 };
