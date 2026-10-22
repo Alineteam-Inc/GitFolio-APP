@@ -279,8 +279,10 @@
           ...(d.on ? [el("div", "row", button(t("Read the files again"), () => set("scan", "--all"))), ...d.repositories.map(filesOf)] : []));
       }
 
+      // Privacy: what is collected and kept, as settings, like the system's Privacy & Security. The data
+      // policy, a document like terms, has a section of its own.
       async function privacy(main) {
-        const [{ policy }, cfg] = await Promise.all([gitfolio("init", "--policy"), gitfolio("config")]);
+        const cfg = await gitfolio("config");
         const msg = el("p", ""), word = input("text", t("a customer or internal project name")), history = el("div", "");
         const config = (...args) => act(msg, () => gitfolio("config", ...args), () => go("privacy"));
         const record = checkbox(!cfg.gitHistoryOff);
@@ -291,8 +293,6 @@
         const save = async () => { exported.textContent = t("Saved as {path}", { path: await call("export", { date: today() }) }); };
         main.replaceChildren(
           el("h1", "", t("Privacy")),
-          el("h2", "", t("Data policy")),
-          el("p", "pre", policy.trim()),
           el("h2", "", t("Blocked words")),
           el("p", "dim", t("Replaced in everything collected, what is stored already too.")),
           el("div", "chips", ...(cfg.mask ?? []).map((w) => el("span", "chip", w, " ", button("×", () => config("mask", "rm", w))))),
@@ -314,6 +314,11 @@
         if (!h.runs.length) return [el("p", "dim", t("No git commands recorded yet."))];
         return [el("p", "dim", t("The last {n} of {total} runs.", { n: h.runs.length, total: h.total })), ...h.runs.map((r) => el("div", "",
           el("p", "", `${when(r.at)}  ${r.command}`), ...r.git.map((g) => el("p", "dim", `    ${g.at}  ${g.command}`))))];
+      }
+
+      async function policy(main) {
+        const { policy } = await gitfolio("init", "--policy");
+        main.replaceChildren(el("h1", "", t("Data policy")), el("p", "pre", policy.trim()));
       }
 
       async function profile(main) {
@@ -462,7 +467,8 @@
         await show();
       }
 
-      const SECTIONS = { overview, account, sync, dependencies, privacy, profile, about };
+      const SECTIONS = { overview, account, sync, dependencies, privacy, profile, policy, about };
+      const LABELS = { policy: "Data policy" }; // the menu's words where they are not the section's name
       const goTo = (section) => go(section); // where an error is solved (app.js)
 
       function go(name) {
@@ -475,7 +481,7 @@
 
       ready().then(() => {
         for (const name of Object.keys(SECTIONS)) {
-          const b = button(t(title(name)), () => go(name));
+          const b = button(t(LABELS[name] ?? title(name)), () => go(name));
           b.dataset.section = name;
           $("nav").append(b);
         }
