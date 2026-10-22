@@ -26,6 +26,7 @@ jobs:
   build:
     needs: check
     uses: ./.github/workflows/build.yml
+    secrets: inherit # the updater's signing key
     with:
       cli-ref: v0.6.0 # the gitfolio CLI release the app ships
 
@@ -43,6 +44,24 @@ jobs:
           pattern: packages-*
           path: dist
           merge-multiple: true
+      # What installed apps update from (tauri.conf.json plugins.updater): each package the updater installs,
+      # by {os}-{arch}-{bundle type}, with its signature.
+      - name: latest.json
+        run: |
+          cd dist
+          base=https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME
+          p='{}'
+          add() { [ -f "$2.sig" ] && p=$(jq --arg k "$1" --arg u "$base/$2" --rawfile s "$2.sig" '. + {($k): {url: $u, signature: ($s | rtrimstr("\n"))}}' <<< "$p") || true; }
+          add darwin-aarch64-app GitFolio_macos_arm64.app.tar.gz
+          add darwin-x86_64-app GitFolio_macos_x64.app.tar.gz
+          add windows-x86_64-nsis GitFolio_windows_x64-setup.exe
+          add linux-x86_64-deb GitFolio_linux_amd64.deb
+          add linux-x86_64-rpm GitFolio_linux_amd64.rpm
+          add linux-aarch64-deb GitFolio_linux_arm64.deb
+          add linux-aarch64-rpm GitFolio_linux_arm64.rpm
+          [ "$p" != '{}' ] || { echo "::error::no signed packages: is the TAURI_SIGNING_PRIVATE_KEY secret set?"; exit 1; }
+          jq -n --arg v "${GITHUB_REF_NAME#v}" --arg d "$(date -u +%FT%TZ)" --argjson p "$p" '{version: $v, pub_date: $d, platforms: $p}' > latest.json
+          cat latest.json
       - run: cd dist && sha256sum * > checksums.txt && cat checksums.txt
       # Signed proof that each package was built here from this tag's source; users check it with
       # gh attestation verify <package> -R Alineteam-Inc/GitFolio-GUI (README).

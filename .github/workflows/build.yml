@@ -24,8 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-latest, target: aarch64-apple-darwin, bundles: dmg, name: macos_arm64 }
-          - { os: macos-latest, target: x86_64-apple-darwin, bundles: dmg, name: macos_x64 }
+          - { os: macos-latest, target: aarch64-apple-darwin, bundles: "app,dmg", name: macos_arm64 }
+          - { os: macos-latest, target: x86_64-apple-darwin, bundles: "app,dmg", name: macos_x64 }
           - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, bundles: "deb,rpm", name: linux_amd64 } # the oldest glibc
           - { os: ubuntu-22.04-arm, target: aarch64-unknown-linux-gnu, bundles: "deb,rpm", name: linux_arm64 }
           - { os: windows-latest, target: x86_64-pc-windows-msvc, bundles: nsis, name: windows_x64 }
@@ -79,16 +79,24 @@ jobs:
         run: cargo test --target ${{ matrix.target }}
 
       # Each package under a name without the version, so the README can link to releases/latest/download/<name>.
+      # With the updater's signing key (a repository secret), also what the app updates itself from, signed
+      # (.sig): the macOS app as .app.tar.gz, the Windows setup and the Linux packages as they are.
       - name: Bundle
         shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          npm run tauri build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+          npm run tauri build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} \
+            ${TAURI_SIGNING_PRIVATE_KEY:+--config '{"bundle":{"createUpdaterArtifacts":true}}'}
           b=src-tauri/target/${{ matrix.target }}/release/bundle
+          n=dist/GitFolio_${{ matrix.name }}
           mkdir dist
+          shopt -s nullglob
           case ${{ matrix.name }} in
-          macos_*) cp $b/dmg/*.dmg dist/GitFolio_${{ matrix.name }}.dmg ;;
-          linux_*) cp $b/deb/*.deb dist/GitFolio_${{ matrix.name }}.deb && cp $b/rpm/*.rpm dist/GitFolio_${{ matrix.name }}.rpm ;;
-          windows_*) cp $b/nsis/*-setup.exe dist/GitFolio_${{ matrix.name }}-setup.exe ;;
+          macos_*) cp $b/dmg/*.dmg $n.dmg; for f in $b/macos/*.app.tar.gz*; do cp "$f" "$n.app.tar.gz${f##*.tar.gz}"; done ;;
+          linux_*) for f in $b/deb/*.deb*; do cp "$f" "$n.deb${f##*.deb}"; done; for f in $b/rpm/*.rpm*; do cp "$f" "$n.rpm${f##*.rpm}"; done ;;
+          windows_*) for f in $b/nsis/*-setup.exe*; do cp "$f" "$n-setup.exe${f##*-setup.exe}"; done ;;
           esac
           ls -l dist
 
