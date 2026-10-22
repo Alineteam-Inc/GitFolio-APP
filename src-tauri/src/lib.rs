@@ -13,12 +13,15 @@ const NEAR_TRAY: Position = Position::TrayCenter;
 #[cfg(not(target_os = "macos"))]
 const NEAR_TRAY: Position = Position::TrayBottomCenter;
 
-/// Runs gitfolio with --json: its JSON on success, its JSON error (or, from a CLI without --json, its
-/// message) on failure. Progress and notices go to stderr and are left out. Its stdin is closed
-/// (`output`), so it asks nothing and, without a login, answers loginFirst.
-// ponytail: finds gitfolio on PATH, which an app started from Finder lacks; bundle it as a sidecar for release builds.
+/// Runs the gitfolio bundled with the app (bundle.externalBin, next to this executable) with --json:
+/// its JSON on success, its JSON error (or, from a CLI without --json, its message) on failure.
+/// Progress and notices go to stderr and are left out. Its stdin is closed (`output`), so it asks
+/// nothing and, without a login, answers loginFirst.
+// ponytail: always the bundled one; prefer an install of its own (brew, install.sh) once `version --json` can tell it is new enough.
 fn gitfolio(args: &[&str]) -> Result<String, String> {
-    let out = Command::new("gitfolio").args(args).arg("--json").output().map_err(|e| e.to_string())?;
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let cli = exe.with_file_name(format!("gitfolio{}", std::env::consts::EXE_SUFFIX));
+    let out = Command::new(cli).args(args).arg("--json").output().map_err(|e| e.to_string())?;
     let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
     if out.status.success() {
         Ok(stdout)
