@@ -233,19 +233,38 @@
         return el("div", "", el("p", "", t("Folders to look in for repositories:")), folders, out, msg);
       }
 
-      // One repository's package manager files (deps --json): the ones allowed are read, the others never.
-      function filesOf(r) {
-        const boxes = r.files.map((f) => [f, checkbox(f.state === "allowed")]);
+      // Every repository's package manager files (deps --json) in one box that scrolls, under its repository's
+      // name; the allowed ones are read, the others never. All chosen or none at once, saved at once: save()
+      // reviews the repositories whose choices changed or have new files (a review collects one again), shows
+      // the failures together, and says whether all went well.
+      function depsFiles(repos) {
+        const items = repos.flatMap((r) => r.files.map((f) => [r, f, checkbox(f.state === "allowed")]));
         const msg = el("p", "");
-        const save = () => gitfolio("deps", "review", r.path, ...boxes.flatMap(([f, c]) => (c.checked ? ["--allow", f.path] : [])));
-        return el("section", "",
-          el("h2", "", r.name),
-          boxes.length > 1 ? bulk(boxes) : "",
-          ...boxes.map(([f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", ` · ${t("new")}`) : "")),
-          r.files.length
-            ? el("div", "row", button(t("Save"), () => act(msg, save, () => { msg.textContent = t("Saved."); })))
-            : el("p", "dim", t("No package manager files.")),
-          msg);
+        async function save() {
+          msg.replaceChildren();
+          const failures = [];
+          for (const r of repos) {
+            const mine = items.filter(([x]) => x === r);
+            if (!mine.some(([, f, c]) => f.state === "new" || c.checked !== (f.state === "allowed"))) continue;
+            try {
+              await gitfolio("deps", "review", r.path, ...mine.flatMap(([, f, c]) => (c.checked ? ["--allow", f.path] : [])));
+            } catch (e) {
+              failures.push({ name: r.name, error: e.message });
+            }
+          }
+          msg.replaceChildren(failures.length ? drawFailures(failures) : t("Saved."));
+          return !failures.length;
+        }
+        if (!items.length) return { parts: [el("p", "dim", t("No package manager files.")), msg], save, msg };
+        return {
+          parts: [bulk(items.map(([, , c]) => [null, c])),
+            el("div", "scroll tall", ...repos.filter((r) => r.files.length).map((r) => el("section", "",
+              el("h2", "", r.name),
+              ...items.filter(([x]) => x === r).map(([, f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", ` · ${t("new")}`) : ""))))),
+            msg],
+          save,
+          msg,
+        };
       }
 
       // gitfolio status <path> --json: one repository, as facts in two columns, numbers beside their words.
@@ -386,7 +405,7 @@
       }
 
       async function dependencies(main) {
-        const d = await gitfolio("deps");
+        const d = await gitfolio("deps"), files = depsFiles(d.repositories);
         const msg = el("p", "");
         const set = (...args) => act(msg, () => gitfolio("deps", ...args), () => go("dependencies"));
         const on = checkbox(d.on), auto = checkbox(d.auto);
@@ -398,7 +417,8 @@
           label(on, t("Detect dependencies"), el("div", "dim", t("Turning it off deletes the dependencies collected."))),
           d.on ? label(auto, t("Also read them on scan, sync and the daily sync"), el("div", "dim", t("Pushes never read them."))) : "",
           msg,
-          ...(d.on ? [el("div", "row", button(t("Read the files again"), () => set("scan", "--all"))), ...d.repositories.map(filesOf)] : []));
+          ...(d.on ? [el("div", "row", button(t("Read the files again"), () => set("scan", "--all"))), ...files.parts,
+            el("div", "actions", button(t("Save"), files.save))] : []));
       }
 
       // Privacy: what is collected and kept, as settings, like the system's Privacy & Security. The data
@@ -564,13 +584,15 @@
           },
           async (next) => {
             const box = el("div", ""), bar = el("div", "actions", button(t("No"), next));
+            let files;
             const choose = async () => {
               await fill(box, async () => {
                 const d = await gitfolio("deps", "on");
-                return d.repositories.length ? d.repositories.map(filesOf)
+                files = depsFiles(d.repositories);
+                return d.repositories.length ? files.parts
                   : [el("p", "", t("Dependency detection is on. No repository is collected yet: choose its files in Dependencies once one is."))];
               });
-              bar.replaceChildren(button(t("Continue"), next));
+              bar.replaceChildren(button(t("Continue"), async () => (await files.save()) && next()));
             };
             bar.append(button(t("Yes, choose the files"), choose));
             return [el("h1", "", t("Detect dependencies?")),
