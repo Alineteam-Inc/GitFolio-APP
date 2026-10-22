@@ -546,8 +546,23 @@
               if (r.how === "xcodeSelect") return msg.replaceChildren(el("p", "", t("Follow the installer that opened, then check again.")));
               await check(); // winget is done, or git was there already
             };
+            // A gitfolio installed on its own, which git hooks run, is first brought to the newest release, once
+            // here: GitFolio needs one new enough, and a computer should have one version.
+            let updated = false;
+            async function update() {
+              updated = true;
+              box.replaceChildren(msg);
+              msg.replaceChildren(el("p", "dim", t("Updating the gitfolio installed on this computer…")));
+              try {
+                const r = JSON.parse(await call("update_cli"));
+                msg.replaceChildren(r?.updated ? el("p", "", el("span", "ok", "✓ "), t("The gitfolio installed on this computer was updated from {from} to {to}.", r)) : "");
+              } catch (e) {
+                msg.replaceChildren(el("p", "", ...drawError(e)));
+              }
+            }
             async function check() {
-              msg.replaceChildren();
+              if (!updated) await update();
+              else msg.replaceChildren();
               try {
                 // --latest: gitfolio asks for the newest versions (git's own releases; gitfolio's, unless bundled).
                 const git = await gitfolio("git", "--latest"), cli = await call("cli_status"), ver = await gitfolio("version", "--latest");
@@ -569,7 +584,7 @@
                   : !cli.installed ? button(t("Install gitfolio"), () => act(msg, () => call("install_cli"), check))
                   : button(t("Continue"), next));
               } catch (e) {
-                box.replaceChildren(el("p", "", ...drawError(e)));
+                box.replaceChildren(el("p", "", ...drawError(e)), msg);
                 bar.replaceChildren(button(t("Check again"), check));
               }
             }

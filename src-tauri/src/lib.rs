@@ -319,6 +319,21 @@ fn install_cli() -> Result<(), String> {
     Ok(())
 }
 
+/// Brings the gitfolio installed on its own, which git hooks run (see find_cli), to the newest release with
+/// the bundled one (gitfolio update --path), as the setup does first: "null" when there is none. A
+/// development build updates only one in its test folder: the others are in real use.
+#[tauri::command]
+async fn update_cli(webview: Webview) -> Result<String, String> {
+    let own = bundled()?;
+    let found = hook_dirs().into_iter().map(|d| d.join(CLI_NAME)).find(|p| p.is_file());
+    let found = found.filter(|f| !same(f, &own) && !version_of(f).is_some_and(|(_, bundled)| bundled));
+    let Some(found) = found.filter(|f| !cfg!(debug_assertions) || in_test_home(f)) else {
+        return Ok("null".into());
+    };
+    let progress = Some((webview.app_handle().clone(), webview.label().to_string()));
+    run_cli(&own, &["update", "--path", &found.to_string_lossy()], progress)
+}
+
 /// Opens a web page in the browser: an https address only, as the git download page gitfolio names.
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
@@ -610,7 +625,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, update_cli, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
