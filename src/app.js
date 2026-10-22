@@ -195,12 +195,22 @@ function drawStack(u, top = 6) {
   ]);
 }
 
-// gitfolio scan --json: per repository, the commits collected now, or why not.
+// Failures of many repositories, as gitfolio tells them one by one ({name, error}): each kind of failure
+// once, the repositories it hit listed after it, in a box that scrolls when long.
+function drawFailures(failures) {
+  if (!failures.length) return "";
+  const by = new Map();
+  for (const f of failures) by.set(f.error, [...(by.get(f.error) ?? []), f.name]);
+  return el("div", "scroll", ...[...by].map(([error, names]) => el("p", "", el("span", "error", error), el("br", ""), el("span", "dim", names.join(", ")))));
+}
+
+// gitfolio scan --json: per repository, the commits collected now; the failures together.
 function drawScan(r) {
-  return r.repositories.map((x) => x.error
-    ? el("p", "error", `${x.name}: ${x.error}`)
-    : el("p", "", t("{name}: {n} new commits", { name: x.name, n: x.commits }),
-      x.pendingManifests ? el("span", "dim", t(" · {n} package manager files to choose in Dependencies", { n: x.pendingManifests })) : ""));
+  return [
+    ...r.repositories.filter((x) => !x.error).map((x) => el("p", "", t("{name}: {n} new commits", { name: x.name, n: x.commits }),
+      x.pendingManifests ? el("span", "dim", t(" · {n} package manager files to choose in Dependencies", { n: x.pendingManifests })) : "")),
+    drawFailures(r.repositories.filter((x) => x.error)),
+  ];
 }
 
 // gitfolio sync --json, in a sentence or a few.
@@ -210,6 +220,6 @@ function drawSync(r) {
   return [
     el("p", "", sent.length ? t("Sent {what}.", { what: sent.join(", ") }) : t("Nothing new to send.")),
     ...(r.waiting ?? []).map((w) => el("p", "dim", t("{namespace} waits until {email} is verified (Account).", w))),
-    ...(r.failed ?? []).map((f) => el("p", "error", `${f.name}: ${f.error}`)),
+    drawFailures(r.failed ?? []),
   ];
 }

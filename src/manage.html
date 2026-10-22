@@ -21,8 +21,7 @@
       main .row { margin: 14px 0; }
       main > .actions { margin-top: auto; padding-top: 20px; }
       main td .row { margin: 0; }
-      /* A long list scrolls in its own box, the page stays put. */
-      .scroll { max-height: 180px; overflow: auto; border: 1px solid rgb(127 127 127 / 0.3); border-radius: 6px; padding: 2px 12px; }
+      main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
       body.setup { grid-template-columns: 1fr; }
       body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
       #progress { position: fixed; right: 16px; bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
@@ -155,19 +154,19 @@
           });
         }
         async function add(list) {
-          const errors = [];
+          const failures = [];
           for (const [i, r] of list.entries()) {
             msg.className = "dim";
             msg.textContent = t("Collecting {name} ({i} of {n}); a large one takes a while…", { name: r.name, i: i + 1, n: list.length });
             try {
               await gitfolio("add", r.path);
             } catch (e) {
-              errors.push(`${r.name}: ${e.message}`);
+              failures.push({ name: r.name, error: e.message });
             }
           }
-          msg.className = errors.length ? "error" : "";
-          msg.textContent = errors.join("\n");
-          if (!errors.length) await onDone();
+          msg.className = "";
+          msg.replaceChildren(drawFailures(failures));
+          if (!failures.length) await onDone();
         }
         find(false);
         drawFolders();
@@ -365,7 +364,7 @@
           try {
             const r = JSON.parse(await call("uninstall", { purge: purge.checked }));
             result.replaceChildren(el("p", "", t("GitFolio was removed.")),
-              ...(r.repositories ?? []).filter((x) => x.error).map((x) => el("p", "error", `${x.path}: ${x.error}`)),
+              drawFailures((r.repositories ?? []).filter((x) => x.error).map((x) => ({ name: x.path, error: x.error }))),
               el("div", "row", button(t("Quit"), () => call("quit"))));
           } catch (e) {
             result.replaceChildren(el("p", "", ...drawError(e)));
@@ -392,7 +391,7 @@
           async (next) => {
             // Without git, gitfolio gives no policy yet: the welcome goes on, the policy is in its section later.
             const { policy } = await gitfolio("init", "--policy").catch(() => ({ policy: "" }));
-            return [el("h1", "", t("Welcome to GitFolio")), el("p", "pre", policy.trim()), el("div", "actions", button(t("Continue"), next))];
+            return [el("h1", "", t("Welcome to GitFolio")), el("div", "scroll tall", el("p", "pre", policy.trim())), el("div", "actions", button(t("Continue"), next))];
           },
           // GitFolio's two needs, in the order they are installed: git, then gitfolio for git hooks. The next
           // thing to do is the page's main button, at its foot, Check again on its left.
@@ -474,12 +473,17 @@
           },
         ];
         let i = 0;
-        const next = () => (++i < steps.length ? show() : go("overview"));
+        const shown = []; // the steps shown before this one, for Back: skipped ones are not gone back to
+        const next = () => (shown.push(i), ++i < steps.length ? show() : go("overview"));
+        const back = () => ((i = shown.pop()), show());
         async function show() {
           try {
             const parts = await steps[i](next);
-            if (parts === null) return next();
-            main.replaceChildren(el("p", "dim", t("Setup · step {i} of {n}", { i: i + 1, n: steps.length })), ...parts);
+            if (parts === null) return ++i < steps.length ? show() : go("overview");
+            // The foot: Back, then the step's own buttons (its last part when it has them).
+            const own = parts.at(-1)?.className === "actions" ? parts.pop() : "";
+            const foot = el("div", "actions", shown.length ? button(t("Back"), back) : "", own);
+            main.replaceChildren(el("p", "dim", t("Setup · step {i} of {n}", { i: i + 1, n: steps.length })), ...parts, foot);
           } catch (e) {
             main.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button(t("Try again"), show)));
           }
