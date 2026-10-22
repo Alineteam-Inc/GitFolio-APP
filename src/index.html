@@ -25,12 +25,26 @@
       .chips { display: flex; flex-wrap: wrap; gap: 4px; }
       .chip { padding: 2px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
       .chip.hidden { opacity: 0.5; }
+      [hidden] { display: none; }
+      label { display: flex; gap: 6px; align-items: center; margin: 12px 0; }
+      .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
     </style>
   </head>
   <body>
-    <header><strong>GitFolio</strong><button id="refresh">Refresh</button></header>
-    <section id="stats"><p class="dim">…</p></section>
-    <section id="stack"></section>
+    <main id="home">
+      <header><strong>GitFolio</strong><button id="refresh">Refresh</button></header>
+      <section id="stats"><p class="dim">…</p></section>
+      <section id="stack"></section>
+    </main>
+    <main id="uninstall" hidden>
+      <header><strong>Uninstall GitFolio</strong></header>
+      <p id="cleans">Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app.</p>
+      <p id="keeps" hidden>Removes the app. The gitfolio you installed yourself stays, with its hooks and settings.</p>
+      <p class="dim">Your data on aline.team stays.</p>
+      <label id="purgeLabel"><input type="checkbox" id="purge" /> Also delete the commits collected on this computer</label>
+      <section id="uninstalled"></section>
+      <div class="actions"><button id="cancel">Cancel</button><button id="remove">Uninstall</button></div>
+    </main>
     <script>
       if (navigator.userAgent.includes("Mac")) document.documentElement.classList.add("glass"); // see lib.rs
       const { invoke } = window.__TAURI__.core;
@@ -100,17 +114,53 @@
 
       // One after the other: each may sync first, and the second then finds nothing left to send. The
       // button waits meanwhile, as a sync can wait up to 30 s for another gitfolio's lock.
-      const button = document.getElementById("refresh");
+      const $ = (id) => document.getElementById(id);
       async function load(refresh) {
-        button.disabled = true;
+        $("refresh").disabled = true;
         await show("stats", drawStats, { refresh });
         await show("stack", drawStack);
-        button.disabled = false;
+        $("refresh").disabled = false;
       }
 
-      button.onclick = () => load(true);
-      // Once, on the first open, not every time: both may ask aline.team, and send in local mode.
-      window.addEventListener("focus", () => load(false), { once: true });
+      $("refresh").onclick = () => load(true);
+      // Once, on the first open of the home view, not every time: both may ask aline.team, and send in local mode.
+      let loaded = false;
+      function home() {
+        $("uninstall").hidden = true;
+        $("home").hidden = false;
+        if (!loaded) load(false);
+        loaded = true;
+      }
+      window.addEventListener("focus", () => $("home").hidden || home());
+
+      // From the tray menu, saying whether a gitfolio installed on its own is in use (and stays).
+      window.__TAURI__.event.listen("uninstall", ({ payload: ownInstall }) => {
+        $("home").hidden = true;
+        $("uninstall").hidden = false;
+        $("cleans").hidden = $("purgeLabel").hidden = ownInstall;
+        $("keeps").hidden = !ownInstall;
+      });
+      $("cancel").onclick = home;
+      $("remove").onclick = async () => {
+        $("cancel").disabled = $("remove").disabled = true;
+        try {
+          const r = JSON.parse(await invoke("uninstall", { purge: $("purge").checked }));
+          const quit = el("button", "", "Quit");
+          quit.onclick = () => invoke("quit");
+          $("uninstalled").replaceChildren(
+            el("p", "", "GitFolio was removed."),
+            ...(r.repositories ?? []).filter((x) => x.error).map((x) => el("p", "error", `${x.path}: ${x.error}`)),
+          );
+          $("uninstall").querySelector(".actions").replaceChildren(quit);
+        } catch (e) {
+          let msg = String(e);
+          try {
+            msg = JSON.parse(msg).error.message;
+          } catch {}
+          $("uninstalled").replaceChildren(el("p", "error", msg));
+          $("cancel").disabled = $("remove").disabled = false;
+        }
+      };
     </script>
   </body>
 </html>
