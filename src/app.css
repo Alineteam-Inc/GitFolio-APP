@@ -81,7 +81,7 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .tl-axis, .tl-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: center; }
 .tl-axis { position: sticky; top: 0; z-index: 1; background: Canvas; height: 18px; }
 .tl-years { position: relative; height: 100%; font-size: 10px; color: color-mix(in srgb, CanvasText 55%, transparent); }
-.tl-years span { position: absolute; transform: translateX(-50%); }
+.tl-years span { position: absolute; padding-left: 4px; }
 .tl-row { height: 22px; }
 .tl-name { display: flex; align-items: center; gap: 6px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl-name img { width: 13px; height: 13px; flex-shrink: 0; }
