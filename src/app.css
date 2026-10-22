@@ -31,7 +31,8 @@ th { font-weight: normal; opacity: 0.6; }
 p > button { margin-left: 8px; } /* the button that solves an error, after its words */
 .pre { white-space: pre-wrap; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-.actions { display: flex; gap: 8px; margin-top: 12px; }
+/* A page's own buttons: on the right, the main one last, as macOS dialogs have them. */
+.actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 .score { display: grid; grid-template-columns: 13ch 1fr 3ch 5ch; gap: 8px; align-items: center; margin: 3px 0; }
 .score span:nth-child(n + 3) { text-align: right; }
 .bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 0.2); }
