@@ -8,7 +8,7 @@
     <style>
       /* The content scrolls between the name and the foot; the foot's icons stay put. */
       body { display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-      main { flex: 1; overflow: auto; }
+      main { flex: 1; overflow: auto; scrollbar-gutter: stable; padding-right: 4px; } /* room for the scrollbar, off the text */
       #state { margin-bottom: 8px; }
       footer { display: flex; align-items: center; gap: 4px; padding-top: 8px; border-top: 1px solid rgb(127 127 127 / 0.2); }
       footer .spacer { flex: 1; }

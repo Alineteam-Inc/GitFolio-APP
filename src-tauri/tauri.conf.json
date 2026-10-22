@@ -13,13 +13,14 @@
         "label": "main",
         "create": false,
         "title": "GitFolio",
-        "width": 360,
+        "width": 400,
         "height": 420,
         "visible": false,
         "decorations": false,
         "resizable": false,
         "alwaysOnTop": true,
-        "skipTaskbar": true
+        "skipTaskbar": true,
+        "shadow": false
       },
       {
         "label": "manage",
