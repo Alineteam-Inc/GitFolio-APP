@@ -251,7 +251,12 @@ async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String>
             return Err("This development build removes only repositories in its test folder: the gitfolio in real use relies on the others' hooks.".into());
         }
     }
-    let cli = cli()?.0;
+    // The data policy, a text to read, comes from the bundled one when the one installed is too old to run:
+    // the setup shows it first, before it says to update that one.
+    let cli = match cli() {
+        Err(_) if args[0] == "init" && args.iter().any(|a| a == "--policy") => bundled()?,
+        found => found?.0,
+    };
     let progress = Some((webview.app_handle().clone(), webview.label().to_string()));
     run_cli(&cli, &args.iter().map(String::as_str).collect::<Vec<_>>(), progress)
 }
