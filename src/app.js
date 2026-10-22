@@ -132,6 +132,7 @@ const REMEDIES = {
   cliTooOld: ["The GitFolio CLI installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own."],
   // GitFolio called gitfolio wrong: its words are a command's usage, for no user.
   usage: ["Something went wrong in GitFolio. Please try again, or restart it."],
+  didYouMeanWord: ["Something went wrong in GitFolio. Please try again, or restart it."], // usage, with a guess at the word meant
 };
 
 // An error in words and, when the app solves it, a button to where: inline, for a line of its own.
