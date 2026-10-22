@@ -201,6 +201,13 @@ fn allowed(args: &[String]) -> bool {
     }
 }
 
+/// Whether a path is in the HOME a development build is started with (a test one), both as they really
+/// are: on macOS a temporary folder's /var is /private/var.
+fn in_test_home(p: &Path) -> bool {
+    let real = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
+    real(p).starts_with(real(&std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default()))
+}
+
 /// Runs a gitfolio command for a window (see run_cli), its progress shown there.
 #[tauri::command]
 async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String> {
@@ -208,18 +215,15 @@ async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String>
         return Err(format!("GitFolio does not run gitfolio {}", args.join(" ")));
     }
     // A development build is started with a test HOME and a test server (GITFOLIO_API_URL, which its
-    // gitfolio, built from source, takes): it logs in to that server only, never to aline.team itself,
-    // and adds only repositories in that HOME, as the hooks it installs go into the repository, where the
-    // gitfolio in real use may have its own.
+    // gitfolio, built from source, takes): it logs in to that server only, never to aline.team itself.
+    // It may add any repository, to be tried as it is, but removes hooks only from ones in that HOME: the
+    // hooks are in the repository, and the gitfolio in real use relies on them in the others.
     if cfg!(debug_assertions) {
         if args[0] == "login" && std::env::var_os("GITFOLIO_API_URL").is_none() {
             return Err("This development build has no test server to log in to.".into());
         }
-        // Both as they really are: on macOS a temporary folder's /var is /private/var.
-        let real = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
-        let home = real(&std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default());
-        if args[0] == "add" && !args.get(1).is_some_and(|p| real(Path::new(p)).starts_with(&home)) {
-            return Err("This development build adds only repositories in its test folder.".into());
+        if args[0] == "remove" && !args.get(1).is_some_and(|p| in_test_home(Path::new(p))) {
+            return Err("This development build removes only repositories in its test folder: the gitfolio in real use relies on the others' hooks.".into());
         }
     }
     let cli = cli()?.0;
@@ -312,6 +316,15 @@ async fn export(app: AppHandle, date: String) -> Result<Option<PathBuf>, String>
 async fn uninstall(purge: bool) -> Result<String, String> {
     let mut done = "{}".to_string();
     if let Ok((cli, true)) = cli() {
+        // A development build may have added repositories outside its test folder (see gitfolio): their
+        // hooks stay, for the gitfolio in real use.
+        if cfg!(debug_assertions) {
+            let status: serde_json::Value = serde_json::from_str(&run_cli(&cli, &["status"], None)?).map_err(|e| e.to_string())?;
+            let paths = status["repositories"].as_array().cloned().unwrap_or_default();
+            if paths.iter().any(|r| !in_test_home(Path::new(r["path"].as_str().unwrap_or("")))) {
+                return Err("This development build does not uninstall with repositories outside its test folder: the gitfolio in real use relies on their hooks. Remove those first.".into());
+            }
+        }
         done = run_cli(&cli, if purge { &["uninstall", "--purge-local"] } else { &["uninstall"] }, None)?;
         #[cfg(unix)]
         if let Some(at) = link_path() {
