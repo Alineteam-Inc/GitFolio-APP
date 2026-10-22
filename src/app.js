@@ -66,14 +66,20 @@ const ICONS = {
   refresh: '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/>',
   close: '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>',
+  plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  crown: '<path d="M4 18l-1.5-10 5 4L12 5l4.5 7 5-4L20 18z"/>',
+  sync: '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7"/><path d="M18 15.5V9a3 3 0 0 0-3-3h-4"/><path d="M13 3.5L10.5 6 13 8.5"/>', // a git pull
 };
 
-function iconButton(icon, words, f) {
+// An icon for a button, named on hover by the page (named): this web view shows no system tooltip. `kind`
+// colours it: remove (red), primary (yellow), verify (green).
+function iconButton(icon, words, f, kind = "") {
   const b = button("", f);
-  b.className = "icon";
+  b.className = `icon ${kind}`.trim();
   b.innerHTML = `<svg viewBox="0 0 24 24">${icon}</svg>`; // the app's own drawings above, no words from outside
-  b.title = b.ariaLabel = words;
-  return b;
+  b.ariaLabel = b.dataset.name = words;
+  return named(b);
 }
 
 // A path with the user's home folder as ~: /Users/me/code/app → ~/code/app (Windows' C:\Users\me\… too).
@@ -125,7 +131,7 @@ const REMEDIES = {
   stackUnavailable: ["aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile."],
   noGit: ["git is needed and was not found on this computer.", "Set up", "setup"],
   // From lib.rs: an old gitfolio installed on its own is in use.
-  cliTooOld: ["The gitfolio installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own."],
+  cliTooOld: ["The GitFolio CLI installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own."],
   // GitFolio called gitfolio wrong: its words are a command's usage, for no user.
   usage: ["Something went wrong in GitFolio. Please try again, or restart it."],
 };
@@ -283,6 +289,7 @@ function named(tile) {
     tip.style.top = `${r.top - h - 4 >= 4 ? r.top - h - 4 : r.bottom + 4}px`;
   };
   tile.onmouseleave = () => (tip.hidden = true);
+  tile.onmousedown = () => (tip.hidden = true); // a click may redraw what is under it
   return tile;
 }
 

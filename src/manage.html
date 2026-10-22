@@ -42,6 +42,8 @@
       .facts span { overflow-wrap: anywhere; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
       main > .foot { justify-content: space-between; }
+      header.repos-head { margin: 22px 0 8px; }
+      header.repos-head h2 { margin: 0; }
       /* The time picker: steppers for hour and minute, AM/PM as two joined buttons, the chosen one lit. */
       .time { display: flex; align-items: center; gap: 6px; }
       .time .num { font-size: 22px; min-width: 2ch; text-align: center; }
@@ -67,7 +69,7 @@
     <script>
       // A time of day: hour and minute stepped up and down, AM or PM chosen, rather than the system's field,
       // whose AM/PM turns with its arrows unseen. hhmm() gives it as gitfolio takes it: "HH:MM", 24-hour.
-      function timeInput(hhmm) {
+      function timeInput(hhmm, changed = () => {}) {
         let [h, m] = hhmm.split(":").map(Number);
         const hour = el("span", "num"), minute = el("span", "num"), am = el("button", "", t("AM")), pm = el("button", "", t("PM"));
         const draw = () => {
@@ -76,11 +78,11 @@
           am.className = h < 12 ? "on" : "";
           pm.className = h < 12 ? "" : "on";
         };
-        const arrow = (text, change) => Object.assign(el("button", "", text), { onclick: () => (change(), draw()) });
+        const arrow = (text, change) => Object.assign(el("button", "", text), { onclick: () => (change(), draw(), changed()) });
         const stepper = (shown, up, down) => el("div", "stepper", arrow("▲", up), shown, arrow("▼", down));
         // The hour turns within its half of the day: AM or PM is chosen apart.
-        am.onclick = () => (h %= 12, draw());
-        pm.onclick = () => (h = (h % 12) + 12, draw());
+        am.onclick = () => (h %= 12, draw(), changed());
+        pm.onclick = () => (h = (h % 12) + 12, draw(), changed());
         const box = el("div", "time",
           stepper(hour, () => (h = (h % 12 + 1) % 12 + (h >= 12 ? 12 : 0)), () => (h = (h % 12 + 11) % 12 + (h >= 12 ? 12 : 0))),
           el("span", "num", ":"),
@@ -147,10 +149,10 @@
               el("span", "", e.email),
               ...[e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).map((b) => el("span", "badge", b)),
               el("div", "item-actions",
-                e.primary ? "" : button(t("Make primary"), () => change("primary", e.email)),
-                e.verified ? "" : button(t("Verify…"), () => act(msg, () => verify(e.email))),
-                button(t("Remove"), () => change("rm", e.email))))),
-            el("div", "row", add, button(t("Add"), () => change("add", add.value.trim()))),
+                e.primary ? "" : iconButton(ICONS.crown, t("Make primary"), () => change("primary", e.email), "primary"),
+                e.verified ? "" : iconButton(ICONS.check, t("Verify…"), () => act(msg, () => verify(e.email)), "verify"),
+                iconButton(ICONS.close, t("Remove"), () => change("rm", e.email), "remove")))),
+            el("div", "row", add, iconButton(ICONS.plus, t("Add"), () => change("add", add.value.trim()))),
             msg,
           ];
         });
@@ -183,7 +185,7 @@
         const folders = el("div", ""), out = el("div", ""), msg = el("p", "");
         const drawFolders = () => folders.replaceChildren(
           ...roots.map((r) => el("div", "item", el("span", "", r),
-            el("div", "item-actions", button(t("Remove"), () => { roots = roots.filter((x) => x !== r); drawFolders(); })))),
+            el("div", "item-actions", iconButton(ICONS.close, t("Remove"), () => { roots = roots.filter((x) => x !== r); drawFolders(); }, "remove")))),
           el("div", "row", button(t("Add a folder…"), async () => {
             const picked = await call("pick_folder");
             if (picked && !roots.includes(picked)) roots.push(picked), drawFolders();
@@ -340,16 +342,16 @@
         }
         main.replaceChildren(
           el("header", "", el("h1", "", t("Overview")), el("div", "row",
-            button(t("Sync now"), () => fill(result, async () => drawSync(await gitfolio("sync")))), button(t("Refresh"), () => go("overview")))),
+            iconButton(ICONS.sync, t("Sync now"), () => fill(result, async () => drawSync(await gitfolio("sync")))), iconButton(ICONS.refresh, t("Refresh"), () => go("overview")))),
           el("p", "", `${s.account} · ${t(local ? "local mode" : "automatic")}`),
           el("p", "dim", s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet")),
           s.lastSyncError ? el("p", "error", s.lastSyncError) : "",
           // Local mode sends nothing by itself, so what is not sent only grows there.
           !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
           result,
-          el("h2", "", t("Repositories ({n})", { n: s.repositories.length })),
+          el("header", "repos-head", el("h2", "", t("Repositories ({n})", { n: s.repositories.length })),
+            iconButton(ICONS.plus, t("Add repositories…"), () => adding.replaceChildren(finder(() => go("overview"))))),
           table,
-          el("div", "row", button(t("Add repositories…"), () => adding.replaceChildren(finder(() => go("overview"))))),
           adding);
       }
 
@@ -389,8 +391,11 @@
           r.onchange = () => act(msg, () => gitfolio("config", "autosync", value === "local" ? "off" : "on"), () => go("sync"));
           return label(r, t(text), el("div", "dim", t(note)));
         };
-        const time = timeInput(sch.schedule || "09:00");
         const schedule = (...args) => act(msg, () => gitfolio("schedule", ...args), () => go("sync"));
+        const on = Object.assign(checkbox(!!sch.schedule), { className: "switch", ariaLabel: t("Daily sync") });
+        let later;
+        const time = timeInput(sch.schedule || "09:00", () => on.checked && (clearTimeout(later), (later = setTimeout(() => schedule(time.hhmm()), 800))));
+        on.onchange = () => schedule(on.checked ? time.hhmm() : "off");
         main.replaceChildren(
           el("h1", "", t("Sync")),
           el("h2", "", t("How commits are sent")),
@@ -399,7 +404,7 @@
           el("h2", "", t("Daily sync")),
           local ? el("p", "dim", t("Local mode has no daily sync.")) : el("div", "",
             el("p", "dim", sch.schedule ? t("Every day at {time}, for pushes the hooks missed.", { time: sch.schedule }) : t("Off. Once a day at a set time, it sends pushes the hooks missed.")),
-            el("div", "row", time, button(t("Set"), () => schedule(time.hhmm())), sch.schedule ? button(t("Turn off"), () => schedule("off")) : "")),
+            el("div", "row", on, time)),
           el("h2", "", t("Last sync")),
           el("p", "", sch.lastSync ? when(sch.lastSync) : t("Not synced yet")),
           sch.lastSyncError ? el("p", "error", sch.lastSyncError) : "",
@@ -442,7 +447,7 @@
           el("h1", "", t("Privacy")),
           el("h2", "", t("Blocked words")),
           el("p", "dim", t("Replaced in everything collected, what is stored already too.")),
-          el("div", "row", word, button(t("Add"), () => config("mask", "add", word.value.trim()))),
+          el("div", "row", word, iconButton(ICONS.plus, t("Add"), () => config("mask", "add", word.value.trim()))),
           el("div", "chips", ...(cfg.mask ?? []).map((w) => el("span", "chip", w, " ", button("×", () => config("mask", "rm", w))))),
           el("h2", "", t("Git commands GitFolio runs")),
           label(record, t("Keep git's own record of them"), el("div", "dim", t("Turning it off deletes the record."))),
@@ -480,7 +485,7 @@
             return [drawTimeline(u), ...drawStack(u)];
           });
         };
-        main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), button(t("Refresh"), () => load(true))),
+        main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), iconButton(ICONS.refresh, t("Refresh"), () => load(true))),
           stats, el("h2", "", t("Tech stack")), el("p", "dim", t("From the repositories on this computer.")), stack);
         await load(false);
       }

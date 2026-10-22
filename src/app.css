@@ -16,6 +16,14 @@ button { font: inherit; height: 28px; min-width: 88px; padding: 0 14px; border: 
 button.icon { min-width: 28px; width: 28px; padding: 0; display: inline-grid; place-items: center; background: transparent; }
 button.icon:hover { background: rgb(127 127 127 / 0.2); }
 button.icon svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+button.icon.remove svg { stroke: #e5484d; }
+button.icon.primary svg { fill: #f5c518; stroke: #b88a00; stroke-width: 1.4; }
+button.icon.verify svg { stroke: #2fa84f; stroke-width: 2.2; }
+/* An on/off switch: a checkbox drawn as one. */
+input.switch { appearance: none; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: rgb(127 127 127 / 0.35); position: relative; cursor: pointer; transition: background 0.15s; }
+input.switch::before { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+input.switch:checked { background: #0a84ff; }
+input.switch:checked::before { left: 16px; }
 .chip button { height: auto; min-width: 0; padding: 0 4px; background: none; } /* the × of a blocked word */
 button:active { background: rgb(127 127 127 / 0.3); }
 button:disabled { opacity: 0.5; }
