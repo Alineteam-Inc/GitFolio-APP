@@ -6,12 +6,14 @@
     <title>GitFolio</title>
     <link rel="stylesheet" href="app.css" />
     <style>
-      body { display: grid; grid-template-columns: 160px 1fr; height: 100vh; padding: 0; box-sizing: border-box; }
-      nav { padding: 40px 10px 14px; } /* clear of the macOS window buttons */
-      nav button { display: block; width: 100%; margin: 2px 0; text-align: left; border-radius: 6px; background: transparent; }
-      nav button.on { background: rgb(127 127 127 / 0.2); }
-      main { overflow: auto; padding: 24px 24px 40px; }
-      main h1 { margin-bottom: 8px; }
+      :root { font-size: 13px; }
+      body { display: grid; grid-template-columns: 150px 1fr; height: 100vh; padding: 0; box-sizing: border-box; background: Canvas; }
+      /* The menu, apart from the page: its own shade and edge, the section open in the accent color. */
+      nav { padding: 10px 8px; background: rgb(127 127 127 / 0.1); border-right: 1px solid rgb(127 127 127 / 0.25); }
+      nav button { display: block; width: 100%; margin: 1px 0; padding: 6px 10px; text-align: left; border-radius: 6px; background: transparent; }
+      nav button.on { background: #0a84ff; color: #fff; }
+      main { overflow: auto; padding: 14px 20px 28px; }
+      main h1 { font-size: 18px; margin-bottom: 8px; }
       #progress { position: fixed; right: 16px; bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
     </style>
   </head>

@@ -1,6 +1,5 @@
 // Shared by the tray window (index.html) and the GitFolio window (manage.html).
 
-if (navigator.userAgent.includes("Mac")) document.documentElement.classList.add("glass"); // see lib.rs
 const { invoke } = window.__TAURI__.core;
 const $ = (id) => document.getElementById(id);
 

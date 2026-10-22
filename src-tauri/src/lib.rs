@@ -281,7 +281,8 @@ fn glass<'a, R: Runtime, M: Manager<R>>(win: WebviewWindowBuilder<'a, R, M>) -> 
 }
 
 /// Opens the GitFolio window at a section of manage.html, or brings it forward there. On macOS the app
-/// is in the Dock while it is open, as a window to work in.
+/// is in the Dock while it is open, as a window to work in. It is an ordinary opaque window, no glass:
+/// a window to read and fill in.
 fn open_manage(app: &AppHandle, section: &str) -> tauri::Result<()> {
     let section = if section.chars().all(|c| c.is_ascii_alphanumeric()) { section } else { "overview" };
     if let Some(win) = app.get_webview_window("manage") {
@@ -294,7 +295,7 @@ fn open_manage(app: &AppHandle, section: &str) -> tauri::Result<()> {
     app.set_activation_policy(tauri::ActivationPolicy::Regular)?;
     let win = WebviewWindowBuilder::from_config(app, &window_config(app, "manage"))?
         .initialization_script(format!("window.initialSection = {section:?};"));
-    glass(win).build()?.set_focus()
+    win.build()?.set_focus()
 }
 
 #[tauri::command]

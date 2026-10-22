@@ -20,6 +20,7 @@
     <section id="stack"></section>
     <script src="app.js"></script>
     <script>
+      if (navigator.userAgent.includes("Mac")) document.documentElement.classList.add("glass"); // see lib.rs
       const open = (section) => call("open", { section });
 
       // gitfolio status --json, in a line: the account, the sync mode and the last sync.

@@ -2,14 +2,17 @@
 
 /* Each system's own code font: SF Mono on macOS, Consolas on Windows, Liberation or DejaVu Sans Mono on Linux. */
 :root { color-scheme: light dark; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace; }
-:root.glass { background: transparent; } /* the macOS window glass shows through */
+/* The macOS window glass of the tray window shows through, toned down to keep the text readable. */
+:root.glass { background: color-mix(in srgb, Canvas 60%, transparent); }
 body { margin: 0; padding: 14px; }
 [hidden] { display: none; }
 header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
 button { font: inherit; border: 0; border-radius: 999px; padding: 4px 12px; background: rgb(127 127 127 / 0.18); color: inherit; }
 button:active { background: rgb(127 127 127 / 0.3); }
 button:disabled { opacity: 0.5; }
-input, textarea { font: inherit; color: inherit; background: rgb(127 127 127 / 0.12); border: 1px solid rgb(127 127 127 / 0.3); border-radius: 6px; padding: 4px 8px; }
+/* Fields look like fields, apart from buttons: the system's field colors and a clear border. */
+input, textarea { font: inherit; color: FieldText; background: Field; border: 1px solid rgb(127 127 127 / 0.6); border-radius: 6px; padding: 5px 8px; }
+input:focus, textarea:focus { outline: 2px solid #0a84ff; outline-offset: -1px; }
 input[type="checkbox"], input[type="radio"] { padding: 0; }
 textarea { width: 100%; box-sizing: border-box; }
 h1 { margin: 0; font-size: 20px; }
@@ -23,7 +26,7 @@ th { font-weight: normal; opacity: 0.6; }
 .error { color: #d33; white-space: pre-wrap; }
 .pre { white-space: pre-wrap; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-.actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.actions { display: flex; gap: 8px; margin-top: 12px; }
 .score { display: grid; grid-template-columns: 13ch 1fr 3ch 5ch; gap: 8px; align-items: center; margin: 3px 0; }
 .score span:nth-child(n + 3) { text-align: right; }
 .bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 0.2); }

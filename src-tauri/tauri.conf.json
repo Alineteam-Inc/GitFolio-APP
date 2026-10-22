@@ -26,12 +26,10 @@
         "create": false,
         "title": "GitFolio",
         "url": "manage.html",
-        "width": 900,
-        "height": 640,
-        "minWidth": 680,
-        "minHeight": 440,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "width": 720,
+        "height": 520,
+        "minWidth": 600,
+        "minHeight": 400
       }
     ],
     "security": {
