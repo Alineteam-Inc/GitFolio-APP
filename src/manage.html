@@ -22,7 +22,17 @@
       main > .actions { margin-top: auto; padding-top: 20px; }
       main td .row { margin: 0; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
-      main > .foot { justify-content: space-between; } /* Back at the left, a step's buttons at the right */
+      main > .foot { justify-content: space-between; }
+      /* The time picker: steppers for hour and minute, AM/PM as two joined buttons, the chosen one lit. */
+      .time { display: flex; align-items: center; gap: 6px; }
+      .time .num { font-size: 22px; min-width: 2ch; text-align: center; }
+      .stepper { display: flex; flex-direction: column; align-items: center; }
+      .stepper button { height: 20px; min-width: 36px; padding: 0; font-size: 10px; background: transparent; }
+      .ampm { display: flex; margin-left: 10px; }
+      .ampm button { min-width: 52px; border-radius: 0; }
+      .ampm button:first-child { border-radius: 6px 0 0 6px; }
+      .ampm button:last-child { border-radius: 0 6px 6px 0; }
+      .ampm button.on { background: #0a84ff; color: #fff; } /* Back at the left, a step's buttons at the right */
       main > .scroll.tall { flex: 1 1 0; max-height: none; min-height: 140px; } /* a page's main box takes the room left, down to its foot */
       body.setup { grid-template-columns: 1fr; }
       body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
@@ -36,6 +46,31 @@
     <script src="i18n.js"></script>
     <script src="app.js"></script>
     <script>
+      // A time of day: hour and minute stepped up and down, AM or PM chosen, rather than the system's field,
+      // whose AM/PM turns with its arrows unseen. hhmm() gives it as gitfolio takes it: "HH:MM", 24-hour.
+      function timeInput(hhmm) {
+        let [h, m] = hhmm.split(":").map(Number);
+        const hour = el("span", "num"), minute = el("span", "num"), am = el("button", "", t("AM")), pm = el("button", "", t("PM"));
+        const draw = () => {
+          hour.textContent = String(h % 12 || 12);
+          minute.textContent = String(m).padStart(2, "0");
+          am.className = h < 12 ? "on" : "";
+          pm.className = h < 12 ? "" : "on";
+        };
+        const arrow = (text, change) => Object.assign(el("button", "", text), { onclick: () => (change(), draw()) });
+        const stepper = (shown, up, down) => el("div", "stepper", arrow("▲", up), shown, arrow("▼", down));
+        // The hour turns within its half of the day: AM or PM is chosen apart.
+        am.onclick = () => (h %= 12, draw());
+        pm.onclick = () => (h = (h % 12) + 12, draw());
+        const box = el("div", "time",
+          stepper(hour, () => (h = (h % 12 + 1) % 12 + (h >= 12 ? 12 : 0)), () => (h = (h % 12 + 11) % 12 + (h >= 12 ? 12 : 0))),
+          el("span", "num", ":"),
+          stepper(minute, () => (m = (m + 5) % 60), () => (m = (m + 55) % 60)),
+          el("div", "ampm", am, pm));
+        draw();
+        return Object.assign(box, { hhmm: () => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}` });
+      }
+
       function codeInput(length) {
         return Object.assign(input("text", "0".repeat(length ?? 6)), { inputMode: "numeric", autocomplete: "one-time-code", maxLength: length ?? 6 });
       }
@@ -262,7 +297,7 @@
           r.onchange = () => act(msg, () => gitfolio("config", "autosync", value === "local" ? "off" : "on"), () => go("sync"));
           return label(r, t(text), el("div", "dim", t(note)));
         };
-        const time = input("time", "", sch.schedule || "09:00");
+        const time = timeInput(sch.schedule || "09:00");
         const schedule = (...args) => act(msg, () => gitfolio("schedule", ...args), () => go("sync"));
         main.replaceChildren(
           el("h1", "", t("Sync")),
@@ -272,7 +307,7 @@
           el("h2", "", t("Daily sync")),
           local ? el("p", "dim", t("Local mode has no daily sync.")) : el("div", "",
             el("p", "dim", sch.schedule ? t("Every day at {time}, for pushes the hooks missed.", { time: sch.schedule }) : t("Off. Once a day at a set time, it sends pushes the hooks missed.")),
-            el("div", "row", time, button(t("Set"), () => schedule(time.value)), sch.schedule ? button(t("Turn off"), () => schedule("off")) : "")),
+            el("div", "row", time, button(t("Set"), () => schedule(time.hhmm())), sch.schedule ? button(t("Turn off"), () => schedule("off")) : "")),
           el("h2", "", t("Last sync")),
           el("p", "", sch.lastSync ? when(sch.lastSync) : t("Not synced yet")),
           sch.lastSyncError ? el("p", "error", sch.lastSyncError) : "",
@@ -412,13 +447,13 @@
             async function check() {
               msg.replaceChildren();
               try {
-                const git = await gitfolio("git"), cli = await call("cli_status");
+                const git = await gitfolio("git"), cli = await call("cli_status"), { version } = await gitfolio("version");
                 const need = (n, name, what, ok, todo) => el("section", "",
                   el("h2", "", `${n}. ${name}`), el("p", "", el("span", ok ? "ok" : "error", ok ? "✓ " : "✗ "), what), ok ? "" : todo);
                 box.replaceChildren(
                   el("p", "", t("GitFolio needs two things on this computer, installed in this order.")),
                   need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found, el("p", "dim", t("git was not found on this computer."))),
-                  need(2, "gitfolio", t(cli.bundled
+                  need(2, `gitfolio ${version}`, t(cli.bundled
                     ? "Collects your commits in the background when you push, through git hooks. It comes with GitFolio."
                     : "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used."),
                   cli.installed, git.found ? "" : el("p", "dim", t("Install git first."))),
@@ -455,7 +490,11 @@
           async (next) => {
             const box = el("div", ""), bar = el("div", "actions", button(t("No"), next));
             const choose = async () => {
-              await fill(box, async () => (await gitfolio("deps", "on")).repositories.map(filesOf));
+              await fill(box, async () => {
+                const d = await gitfolio("deps", "on");
+                return d.repositories.length ? d.repositories.map(filesOf)
+                  : [el("p", "", t("Dependency detection is on. No repository is collected yet: choose its files in Dependencies once one is."))];
+              });
               bar.replaceChildren(button(t("Continue"), next));
             };
             bar.append(button(t("Yes, choose the files"), choose));
@@ -464,10 +503,10 @@
           },
           async (next) => {
             if ((await gitfolio("status")).syncMode === "local") return null; // local mode has no daily sync
-            const time = input("time", "", "09:00"), msg = el("p", "");
+            const time = timeInput("09:00"), msg = el("p", "");
             return [el("h1", "", t("A daily sync?")), el("p", "dim", t("Once a day at a set time, it sends pushes the hooks missed.")),
               el("div", "row", time), msg,
-              el("div", "actions", button(t("No"), next), button(t("Set"), () => act(msg, () => gitfolio("schedule", time.value), next)))];
+              el("div", "actions", button(t("No"), next), button(t("Set"), () => act(msg, () => gitfolio("schedule", time.hhmm()), next)))];
           },
           async (next) => {
             const s = await gitfolio("status");
