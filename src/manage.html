@@ -30,6 +30,11 @@
       table.repos thead th { position: sticky; top: 0; z-index: 1; background: Canvas; font-size: 11px;
         opacity: 1; color: color-mix(in srgb, CanvasText 60%, transparent); } /* dim by colour: the rows under it must not show through */
       table.repos tr.more:has(.repo-box:empty) { display: none; } /* opened by details or removing */
+      /* What opens under a line wraps within the box, rather than widening the table past it. */
+      table.repos tr.more td { white-space: normal; max-width: 0; }
+      /* A narrow box drops the hooks' column (nearly always "on"), to keep the others whole. */
+      .scroll.tall { container-type: inline-size; }
+      @container (max-width: 520px) { table.repos .hooks { display: none; } }
       .repo-box { padding: 2px 0 6px; }
       .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; padding: 6px 8px; }
       .facts span { overflow-wrap: anywhere; }
@@ -288,7 +293,7 @@
         // the window is narrow, whole on hover; icon buttons; details and removing open under the line.
         const rows = el("tbody", "");
         const table = el("div", "scroll tall", el("table", "repos",
-          el("thead", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", h === "Commits" ? "num" : "", h && t(h))))),
+          el("thead", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", { Commits: "num", Hooks: "hooks" }[h] ?? "", h && t(h))))),
           rows));
         for (const r of s.repositories) {
           const box = el("div", "repo-box");
@@ -304,7 +309,7 @@
             el("tr", "", where,
               el("td", "num", String(r.commits)),
               el("td", "", r.namespace === "" ? t("never (no remote)") : r.waiting ? t("waiting") : String(r.sent)),
-              el("td", "", t(r.hooks)),
+              el("td", "hooks", t(r.hooks)),
               el("td", "", r.lastCommit || "-"),
               el("td", "icons",
                 iconButton(ICONS.info, t("Details"), panel("details", () => fill(box, async () => drawRepo(await gitfolio("status", r.path))))),
@@ -447,7 +452,7 @@
         // One after the other: each may sync first in local mode, and the second then finds nothing left to send.
         const load = async (refresh) => {
           await fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
-          await fill(stack, async () => drawStack(await gitfolio("stack"), Infinity));
+          await fill(stack, async () => drawStack(await gitfolio("stack")));
         };
         main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), button(t("Refresh"), () => load(true))),
           stats, el("h2", "", t("Tech stack")), stack);

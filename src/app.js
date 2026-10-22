@@ -269,11 +269,12 @@ const TECH_ICONS = {
   "unreal engine": "unrealengine", "vite": "vitejs", "vue": "vuejs", "webpack": "webpack", "zig": "zig",
 };
 
-// gitfolio stack --json: the longest used of each kind, `top` of each, as icons (Devicon, in icons/tech)
-// named on hover; a name without one shows its first letters.
-function drawStack(u, top = 6) {
+// gitfolio stack --json: every one of each kind, the longest used first, as icons (Devicon, in icons/tech)
+// named on hover, wrapping onto more lines as the window's width allows; a name without an icon shows its
+// first letters.
+function drawStack(u) {
   const kinds = ["languages", "frameworks", "libraries"].map((k) => [k,
-    [...(u[k] ?? [])].sort((a, b) => (b.careerMonths ?? 0) - (a.careerMonths ?? 0)).slice(0, top)]);
+    [...(u[k] ?? [])].sort((a, b) => (b.careerMonths ?? 0) - (a.careerMonths ?? 0))]);
   if (kinds.every(([, items]) => !items.length)) return [el("p", "dim", t("No tech stack yet."))];
   return kinds.filter(([, items]) => items.length).flatMap(([k, items]) => [
     el("h2", "", t(title(k))),
