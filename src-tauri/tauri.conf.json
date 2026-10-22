@@ -10,6 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "create": false,
         "title": "GitFolio",
         "width": 360,
@@ -19,6 +20,18 @@
         "resizable": false,
         "alwaysOnTop": true,
         "skipTaskbar": true
+      },
+      {
+        "label": "manage",
+        "create": false,
+        "title": "GitFolio",
+        "url": "manage.html",
+        "width": 900,
+        "height": 640,
+        "minWidth": 680,
+        "minHeight": 440,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       }
     ],
     "security": {

@@ -1,13 +1,15 @@
 use std::{
     fs,
+    io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager, WebviewWindowBuilder, WindowEvent,
+    utils::config::WindowConfig,
+    AppHandle, Emitter, Manager, Runtime, Webview, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -122,38 +124,92 @@ fn unlink(own: &Path, at: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Runs gitfolio with --json: its JSON on success, its JSON error (or, from a CLI without --json, its
-/// message) on failure. Progress and notices go to stderr and are left out. Its stdin is closed
-/// (`output`), so it asks nothing and, without a login, answers loginFirst.
-fn run_cli(cli: &Path, args: &[&str]) -> Result<String, String> {
-    let out = Command::new(cli).args(args).arg("--json").output().map_err(|e| e.to_string())?;
-    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-    if out.status.success() {
-        Ok(stdout)
-    } else if stdout.trim().is_empty() {
-        Err(String::from_utf8_lossy(&out.stderr).into_owned())
-    } else {
-        Err(stdout)
+/// Where gitfolio's progress goes: the window that asked, as "progress" events.
+type Progress = Option<(AppHandle, String)>;
+
+/// Runs gitfolio with --json: its JSON on success, its JSON error (or a message from one that could not
+/// run) on failure. Its stdin is closed, so it asks nothing and, without a login, answers loginFirst.
+/// Of what goes to stderr, the progress lines ({"progress": ...}) go to `progress`; the lines for
+/// people only make the error when stdout has none.
+fn run_cli(cli: &Path, args: &[&str], progress: Progress) -> Result<String, String> {
+    let mut child = Command::new(cli)
+        .args(args)
+        .arg("--json")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    // stderr is read on its own thread while stdout is read here, so neither pipe fills up and stops gitfolio.
+    let stderr = child.stderr.take().expect("piped");
+    let reader = std::thread::spawn(move || {
+        let mut rest = String::new();
+        for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+            match &progress {
+                Some((app, window)) if line.starts_with(r#"{"progress""#) => {
+                    let _ = app.emit_to(window.as_str(), "progress", line);
+                }
+                _ => rest += &(line + "\n"),
+            }
+        }
+        rest
+    });
+    let mut stdout = String::new();
+    child.stdout.take().expect("piped").read_to_string(&mut stdout).map_err(|e| e.to_string())?;
+    let ok = child.wait().map_err(|e| e.to_string())?.success();
+    let stderr = reader.join().unwrap_or_default();
+    match (ok, stdout.trim().is_empty()) {
+        (true, _) => Ok(stdout),
+        (false, true) => Err(stderr),
+        (false, false) => Err(stdout),
     }
 }
 
-fn gitfolio(args: &[&str]) -> Result<String, String> {
-    run_cli(&cli()?.0, args)
+/// Whether a window may run this gitfolio command: not hook, mcp, update (the app updates its copy)
+/// or uninstall (see uninstall), and init and login only as their steps without questions.
+fn allowed(args: &[String]) -> bool {
+    let has = |flag: &str| args.iter().any(|a| a == flag);
+    match args.first().map(String::as_str) {
+        Some("init") => has("--policy") || has("--scan"),
+        Some("login") => has("--email"),
+        Some(c) => [
+            "logout", "whoami", "add", "remove", "scan", "sync", "status", "stats", "stack", "export", "deps", "config",
+            "history", "email", "schedule", "version",
+        ]
+        .contains(&c),
+        None => false,
+    }
 }
 
-// In local mode, stats and stack first send the commits not sent yet (a sync).
-
-/// The developer type and its five scores: the one saved here, or aline.team's when there is none
-/// for this year or with refresh.
+/// Runs a gitfolio command for a window (see run_cli), its progress shown there.
 #[tauri::command]
-async fn stats(refresh: bool) -> Result<String, String> {
-    gitfolio(if refresh { &["stats", "--refresh"] } else { &["stats"] })
+async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String> {
+    if !allowed(&args) {
+        return Err(format!("GitFolio does not run gitfolio {}", args.join(" ")));
+    }
+    let progress = Some((webview.app_handle().clone(), webview.label().to_string()));
+    run_cli(&cli()?.0, &args.iter().map(String::as_str).collect::<Vec<_>>(), progress)
 }
 
-/// How long each language, framework and library was used, from aline.team each time.
+/// The gitfolio in use and whether it is the bundled one (see find_cli), or why none can be.
 #[tauri::command]
-async fn stack() -> Result<String, String> {
-    gitfolio(&["stack"])
+fn cli_info() -> Result<(PathBuf, bool), String> {
+    cli()
+}
+
+/// Saves what `gitfolio export` prints as gitfolio-export-<date>.json in the Downloads folder, and
+/// says where. The date is the window's (YYYY-MM-DD), as the app keeps no calendar of its own.
+// ponytail: always Downloads; a save dialog (tauri-plugin-dialog, a new dependency) when the user should choose.
+#[tauri::command]
+async fn export(date: String) -> Result<PathBuf, String> {
+    if !date.chars().all(|c| c.is_ascii_digit() || c == '-') {
+        return Err(format!("not a date: {date}"));
+    }
+    let json = run_cli(&cli()?.0, &["export"], None)?;
+    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).ok_or("no home folder")?;
+    let path = PathBuf::from(home).join("Downloads").join(format!("gitfolio-export-{date}.json"));
+    fs::write(&path, json).map_err(|e| e.to_string())?;
+    Ok(path)
 }
 
 /// Removes GitFolio. With the bundled gitfolio, `gitfolio uninstall` first (its hooks, the daily sync,
@@ -165,7 +221,7 @@ async fn stack() -> Result<String, String> {
 async fn uninstall(purge: bool) -> Result<String, String> {
     let mut done = "{}".to_string();
     if let Ok((cli, true)) = cli() {
-        done = run_cli(&cli, if purge { &["uninstall", "--purge-local"] } else { &["uninstall"] })?;
+        done = run_cli(&cli, if purge { &["uninstall", "--purge-local"] } else { &["uninstall"] }, None)?;
         #[cfg(unix)]
         if let Some(at) = link_path() {
             unlink(&cli, &at).map_err(|e| e.to_string())?;
@@ -193,6 +249,45 @@ fn show(app: &AppHandle) {
     }
 }
 
+/// The window `label` of tauri.conf.json.
+fn window_config(app: &AppHandle, label: &str) -> WindowConfig {
+    app.config().app.windows.iter().find(|w| w.label == label).cloned().expect("a window of tauri.conf.json")
+}
+
+/// Glass on macOS like its menu bar menus: Liquid Glass on macOS 26+, the popover material before.
+/// Elsewhere windows stay opaque, as there is no glass to show.
+fn glass<'a, R: Runtime, M: Manager<R>>(win: WebviewWindowBuilder<'a, R, M>) -> WebviewWindowBuilder<'a, R, M> {
+    #[cfg(target_os = "macos")]
+    let win = {
+        use tauri::window::{Effect, EffectsBuilder};
+        win.transparent(true)
+            .effects(EffectsBuilder::new().effects([Effect::LiquidGlassRegular, Effect::Popover]).radius(16.0).build())
+    };
+    win
+}
+
+/// Opens the GitFolio window at a section of manage.html, or brings it forward there. On macOS the app
+/// is in the Dock while it is open, as a window to work in.
+fn open_manage(app: &AppHandle, section: &str) -> tauri::Result<()> {
+    let section = if section.chars().all(|c| c.is_ascii_alphanumeric()) { section } else { "overview" };
+    if let Some(win) = app.get_webview_window("manage") {
+        app.emit_to("manage", "section", section)?;
+        win.unminimize()?;
+        win.show()?;
+        return win.set_focus();
+    }
+    #[cfg(target_os = "macos")]
+    app.set_activation_policy(tauri::ActivationPolicy::Regular)?;
+    let win = WebviewWindowBuilder::from_config(app, &window_config(app, "manage"))?
+        .initialization_script(format!("window.initialSection = {section:?};"));
+    glass(win).build()?.set_focus()
+}
+
+#[tauri::command]
+fn open(app: AppHandle, section: String) -> Result<(), String> {
+    open_manage(&app, &section).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -209,18 +304,9 @@ pub fn run() {
                 let _ = link(&cli, &at);
             }
 
-            // The window from tauri.conf.json, glass on macOS like its menu bar menus: Liquid Glass on
-            // macOS 26+, the popover material before. Elsewhere it stays opaque, as there is no glass to show.
-            let win = WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?;
-            #[cfg(target_os = "macos")]
-            let win = {
-                use tauri::window::{Effect, EffectsBuilder};
-                win.transparent(true)
-                    .effects(EffectsBuilder::new().effects([Effect::LiquidGlassRegular, Effect::Popover]).radius(16.0).build())
-            };
-            win.build()?;
+            glass(WebviewWindowBuilder::from_config(app, &window_config(app.handle(), "main"))?).build()?;
 
-            // Linux sends no tray click events, so the menu is the way to open the window there.
+            // Linux sends no tray click events, so the menu is the way to the windows there.
             let open = MenuItem::with_id(app, "open", "Open GitFolio", true, None::<&str>)?;
             let uninstall = MenuItem::with_id(app, "uninstall", "Uninstall GitFolio…", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -230,12 +316,11 @@ pub fn run() {
                 .menu(&Menu::with_items(app, &[&open, &uninstall, &quit])?)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
-                    "open" => show(app),
-                    // The window asks first; it says whether a gitfolio installed on its own stays. Told
-                    // before it opens, so its first open does not load the home view meanwhile.
+                    "open" => {
+                        let _ = open_manage(app, "overview");
+                    }
                     "uninstall" => {
-                        let _ = app.emit("uninstall", !matches!(cli(), Ok((_, true))));
-                        show(app);
+                        let _ = open_manage(app, "about");
                     }
                     "quit" => app.exit(0),
                     _ => {}
@@ -249,13 +334,19 @@ pub fn run() {
                 .build(app)?;
             Ok(())
         })
-        // Like a menu bar menu: clicking elsewhere closes it.
-        .on_window_event(|window, event| {
-            if let WindowEvent::Focused(false) = event {
+        .on_window_event(|window, event| match event {
+            // Like a menu bar menu: clicking elsewhere closes the tray window.
+            WindowEvent::Focused(false) if window.label() == "main" => {
                 let _ = window.hide();
             }
+            // Out of the Dock again, a menu bar app, once the GitFolio window is closed.
+            #[cfg(target_os = "macos")]
+            WindowEvent::Destroyed if window.label() == "manage" => {
+                let _ = window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+            _ => {}
         })
-        .invoke_handler(tauri::generate_handler![stats, stack, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_info, export, open, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

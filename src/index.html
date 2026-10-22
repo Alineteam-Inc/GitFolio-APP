@@ -4,163 +4,56 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GitFolio</title>
+    <link rel="stylesheet" href="app.css" />
     <style>
-      /* Each system's own code font: SF Mono on macOS, Consolas on Windows, Liberation or DejaVu Sans Mono on Linux. */
-      :root { color-scheme: light dark; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace; }
-      :root.glass { background: transparent; } /* the macOS window glass shows through */
-      body { margin: 0; padding: 14px; }
-      header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-      button { font: inherit; border: 0; border-radius: 999px; padding: 4px 12px; background: rgb(127 127 127 / 0.18); color: inherit; }
-      button:active { background: rgb(127 127 127 / 0.3); }
-      button:disabled { opacity: 0.5; }
-      h1 { margin: 0; font-size: 20px; }
-      h2 { margin: 16px 0 6px; font-size: 11px; font-weight: normal; opacity: 0.6; }
-      p { margin: 4px 0; }
-      .dim { opacity: 0.6; }
-      .error { color: #d33; white-space: pre-wrap; }
-      .score { display: grid; grid-template-columns: 13ch 1fr 3ch 5ch; gap: 8px; align-items: center; margin: 3px 0; }
-      .score span:nth-child(n + 3) { text-align: right; }
-      .bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 0.2); }
-      .bar div { height: 100%; border-radius: 3px; background: #0a84ff; }
-      .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-      .chip { padding: 2px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
-      .chip.hidden { opacity: 0.5; }
-      [hidden] { display: none; }
-      label { display: flex; gap: 6px; align-items: center; margin: 12px 0; }
-      .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+      #state { margin-bottom: 8px; }
     </style>
   </head>
   <body>
-    <main id="home">
-      <header><strong>GitFolio</strong><button id="refresh">Refresh</button></header>
-      <section id="stats"><p class="dim">…</p></section>
-      <section id="stack"></section>
-    </main>
-    <main id="uninstall" hidden>
-      <header><strong>Uninstall GitFolio</strong></header>
-      <p id="cleans">Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app.</p>
-      <p id="keeps" hidden>Removes the app. The gitfolio you installed yourself stays, with its hooks and settings.</p>
-      <p class="dim">Your data on aline.team stays.</p>
-      <label id="purgeLabel"><input type="checkbox" id="purge" /> Also delete the commits collected on this computer</label>
-      <section id="uninstalled"></section>
-      <div class="actions"><button id="cancel">Cancel</button><button id="remove">Uninstall</button></div>
-    </main>
+    <header>
+      <strong>GitFolio</strong>
+      <span class="row" id="buttons"></span>
+    </header>
+    <section id="state"><p class="dim">…</p></section>
+    <div id="progress" class="row dim" hidden></div>
+    <section id="stats"></section>
+    <section id="stack"></section>
+    <script src="app.js"></script>
     <script>
-      if (navigator.userAgent.includes("Mac")) document.documentElement.classList.add("glass"); // see lib.rs
-      const { invoke } = window.__TAURI__.core;
+      const open = (section) => call("open", { section });
 
-      // An element with a class and children, text or elements: text never goes in as HTML.
-      function el(tag, cls, ...kids) {
-        const e = document.createElement(tag);
-        e.className = cls;
-        e.append(...kids);
-        return e;
-      }
-
-      const SCORES = ["agility", "stability", "contribution", "adaptability", "consistency"];
-
-      // gitfolio stats --json: the developer type, its five scores and the same with AI.
-      function drawStats({ type: t, saved, fetchedAt }) {
-        if (!t) return [el("p", "dim", "No developer type yet: aline.team makes it from the commits sent.")];
+      // gitfolio status --json, in a line: the account, the sync mode and the last sync.
+      function drawState(s) {
+        if (!s.setUp) {
+          return [el("p", "", s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits."),
+            el("div", "row", button("Set up", () => open("setup")))];
+        }
+        const local = s.syncMode === "local";
+        const last = s.lastSync ? `last sync ${when(s.lastSync)}` : "not synced yet";
+        const result = el("div", "");
         return [
-          el("h1", "", t.devTypeTitle),
-          el("p", "dim", `${t.dominantPosition ?? "-"} · with AI ${t.devTypeTitleAi ?? "-"}`),
-          el("p", "", t.devTypeDescription ?? ""),
-          el("p", "dim", t.devTypeHashTags ?? ""),
-          el("h2", "", "Scores"),
-          ...SCORES.map((k) => {
-            const v = t[k + "Stat"], ai = t[k + "StatAi"];
-            const fill = el("div", "");
-            fill.style.width = `${v ?? 0}%`;
-            return el("div", "score", el("span", "", k[0].toUpperCase() + k.slice(1)), el("div", "bar", fill),
-              el("span", "", String(v ?? "-")), el("span", "dim", ai == null ? "" : `AI ${ai}`));
-          }),
-          el("p", "dim", saved ? `Saved ${fetchedAt.slice(0, 10)}` : ""),
+          el("p", "dim", `${s.account} · ${local ? "local mode" : "automatic"} · ${last}`),
+          s.lastSyncError ? el("p", "error", s.lastSyncError) : "",
+          // Local mode sends nothing by itself, so what is not sent only grows there.
+          !local && s.unsent ? el("p", "", `${s.unsent} commits not sent yet`) : "",
+          el("div", "row", button("Sync now", () => fill(result, async () => drawSync(await gitfolio("sync"))))),
+          result,
         ];
       }
 
-      const months = (m) => (m == null ? "" : m < 12 ? `${m}m` : `${Math.floor(m / 12)}y ${m % 12}m`);
-
-      // gitfolio stack --json: the longest used of each kind.
-      function drawStack(u) {
-        const kinds = ["languages", "frameworks", "libraries"].map((k) => [k,
-          [...(u[k] ?? [])].sort((a, b) => (b.careerMonths ?? 0) - (a.careerMonths ?? 0)).slice(0, 6)]);
-        if (kinds.every(([, items]) => !items.length)) return [el("p", "dim", "No tech stack yet.")];
-        return kinds.filter(([, items]) => items.length).flatMap(([k, items]) => [
-          el("h2", "", k[0].toUpperCase() + k.slice(1)),
-          el("div", "chips", ...items.map((t) => {
-            const c = el("span", t.isHidden ? "chip hidden" : "chip", `${t.name} ${months(t.careerMonths)}`);
-            if (t.isHidden) c.title = "Hidden on your aline.team profile";
-            return c;
-          })),
-        ]);
-      }
-
-      // Runs one of lib.rs's commands and draws its JSON, or the error it gave.
-      async function show(id, draw, args) {
-        let out;
-        try {
-          out = JSON.parse(await invoke(id, args));
-        } catch (e) {
-          let msg = String(e);
-          try {
-            msg = JSON.parse(msg).error.message; // {"error": {"code", "message"}}
-          } catch {} // plain text: a CLI without --json
-          document.getElementById(id).replaceChildren(el("p", "error", msg));
-          return;
-        }
-        document.getElementById(id).replaceChildren(...draw(out));
-      }
-
-      // One after the other: each may sync first, and the second then finds nothing left to send. The
-      // button waits meanwhile, as a sync can wait up to 30 s for another gitfolio's lock.
-      const $ = (id) => document.getElementById(id);
+      // The state first, from this computer only; then, with an account, the developer type and stack:
+      // one after the other, as each may sync first and the second then finds nothing left to send.
       async function load(refresh) {
-        $("refresh").disabled = true;
-        await show("stats", drawStats, { refresh });
-        await show("stack", drawStack);
-        $("refresh").disabled = false;
+        let s;
+        await fill($("state"), async () => drawState((s = await gitfolio("status"))));
+        if (!s?.account) return $("stats").replaceChildren(), $("stack").replaceChildren();
+        await fill($("stats"), async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
+        await fill($("stack"), async () => drawStack(await gitfolio("stack")));
       }
 
-      $("refresh").onclick = () => load(true);
-      // Once, on the first open of the home view, not every time: both may ask aline.team, and send in local mode.
-      let loaded = false;
-      function home() {
-        $("uninstall").hidden = true;
-        $("home").hidden = false;
-        if (!loaded) load(false);
-        loaded = true;
-      }
-      window.addEventListener("focus", () => $("home").hidden || home());
-
-      // From the tray menu, saying whether a gitfolio installed on its own is in use (and stays).
-      window.__TAURI__.event.listen("uninstall", ({ payload: ownInstall }) => {
-        $("home").hidden = true;
-        $("uninstall").hidden = false;
-        $("cleans").hidden = $("purgeLabel").hidden = ownInstall;
-        $("keeps").hidden = !ownInstall;
-      });
-      $("cancel").onclick = home;
-      $("remove").onclick = async () => {
-        $("cancel").disabled = $("remove").disabled = true;
-        try {
-          const r = JSON.parse(await invoke("uninstall", { purge: $("purge").checked }));
-          const quit = el("button", "", "Quit");
-          quit.onclick = () => invoke("quit");
-          $("uninstalled").replaceChildren(
-            el("p", "", "GitFolio was removed."),
-            ...(r.repositories ?? []).filter((x) => x.error).map((x) => el("p", "error", `${x.path}: ${x.error}`)),
-          );
-          $("uninstall").querySelector(".actions").replaceChildren(quit);
-        } catch (e) {
-          let msg = String(e);
-          try {
-            msg = JSON.parse(msg).error.message;
-          } catch {}
-          $("uninstalled").replaceChildren(el("p", "error", msg));
-          $("cancel").disabled = $("remove").disabled = false;
-        }
-      };
+      $("buttons").append(button("Open", () => open("overview")), button("Refresh", () => load(true)));
+      // Once, on the first open, not every time: stats and stack may ask aline.team, and send in local mode.
+      window.addEventListener("focus", () => load(false), { once: true });
     </script>
   </body>
 </html>
