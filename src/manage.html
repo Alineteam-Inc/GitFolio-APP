@@ -250,7 +250,7 @@
         box.replaceChildren(
           el("p", "", t("Stop collecting {name} and put back the git hooks it had before?", { name: r.name })),
           label(purge, t("Also delete its collected commits, on this computer and on aline.team")),
-          el("div", "actions", button(t("Cancel"), () => box.replaceChildren()), button(t("Remove"), () => act(msg, remove, () => go("overview")))),
+          el("div", "actions", button(t("Cancel"), () => (box.replaceChildren(), delete box.dataset.open)), button(t("Remove"), () => act(msg, remove, () => go("overview")))),
           msg);
       }
 
@@ -270,6 +270,12 @@
           rows));
         for (const r of s.repositories) {
           const box = el("div", "repo-box");
+          // A button opens its panel under the line, and the same button closes it again.
+          const panel = (kind, f) => async () => {
+            if (box.dataset.open === kind) return box.replaceChildren(), delete box.dataset.open;
+            box.dataset.open = kind;
+            await f();
+          };
           const where = el("td", "where", el("strong", "", r.name), " ", el("span", "dim", home(r.path)));
           where.title = `${r.name} · ${home(r.path)}`;
           rows.append(
@@ -279,9 +285,9 @@
               el("td", "", t(r.hooks)),
               el("td", "", r.lastCommit || "-"),
               el("td", "icons",
-                iconButton(ICONS.info, t("Details"), () => fill(box, async () => [drawValue(await gitfolio("status", r.path))])),
-                iconButton(ICONS.refresh, t("Collect again"), () => fill(box, async () => drawScan(await gitfolio("scan", r.path)))),
-                iconButton(ICONS.close, t("Remove…"), () => confirmRemove(r, box)))),
+                iconButton(ICONS.info, t("Details"), panel("details", () => fill(box, async () => [drawValue(await gitfolio("status", r.path))]))),
+                iconButton(ICONS.refresh, t("Collect again"), panel("collect", () => fill(box, async () => drawScan(await gitfolio("scan", r.path))))),
+                iconButton(ICONS.close, t("Remove…"), panel("remove", () => confirmRemove(r, box))))),
             el("tr", "more", Object.assign(el("td", "", box), { colSpan: 6 })));
         }
         main.replaceChildren(
