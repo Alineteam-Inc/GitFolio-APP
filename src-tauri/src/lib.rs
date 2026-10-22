@@ -11,6 +11,7 @@ use tauri::{
     utils::config::WindowConfig,
     AppHandle, Emitter, Manager, Runtime, Webview, WebviewWindowBuilder, WindowEvent,
 };
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_positioner::{Position, WindowExt};
 
 // Under the tray icon: the menu bar is at the top on macOS, the taskbar at the bottom elsewhere.
@@ -279,19 +280,26 @@ fn open_url(url: String) -> Result<(), String> {
     open.arg(&url).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
-/// Saves what `gitfolio export` prints as gitfolio-export-<date>.json in the Downloads folder, and
-/// says where. The date is the window's (YYYY-MM-DD), as the app keeps no calendar of its own.
-// ponytail: always Downloads; a save dialog (tauri-plugin-dialog, a new dependency) when the user should choose.
+/// A folder the user picks in the system's own window (Finder, File Explorer), or none.
 #[tauri::command]
-async fn export(date: String) -> Result<PathBuf, String> {
+async fn pick_folder(app: AppHandle) -> Option<PathBuf> {
+    app.dialog().file().blocking_pick_folder().and_then(|p| p.into_path().ok())
+}
+
+/// Saves what `gitfolio export` prints where the user picks in the system's own window, named
+/// gitfolio-export-<date>.json to start with (the date is the window's, YYYY-MM-DD, as the app keeps no
+/// calendar of its own); says where, or none when the user cancels.
+#[tauri::command]
+async fn export(app: AppHandle, date: String) -> Result<Option<PathBuf>, String> {
     if !date.chars().all(|c| c.is_ascii_digit() || c == '-') {
         return Err(format!("not a date: {date}"));
     }
-    let json = run_cli(&cli()?.0, &["export"], None)?;
-    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).ok_or("no home folder")?;
-    let path = PathBuf::from(home).join("Downloads").join(format!("gitfolio-export-{date}.json"));
-    fs::write(&path, json).map_err(|e| e.to_string())?;
-    Ok(path)
+    let picked = app.dialog().file().set_file_name(format!("gitfolio-export-{date}.json")).add_filter("JSON", &["json"]).blocking_save_file();
+    let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
+        return Ok(None);
+    };
+    fs::write(&path, run_cli(&cli()?.0, &["export"], None)?).map_err(|e| e.to_string())?;
+    Ok(Some(path))
 }
 
 /// Removes GitFolio. With the bundled gitfolio, `gitfolio uninstall` first (its hooks, the daily sync,
@@ -375,6 +383,7 @@ fn open(app: AppHandle, section: String) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // A menu bar app: no Dock icon.
             #[cfg(target_os = "macos")]
@@ -444,7 +453,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, export, open, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, open_url, pick_folder, export, open, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

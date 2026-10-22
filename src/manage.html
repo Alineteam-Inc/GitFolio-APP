@@ -114,14 +114,23 @@
       // Finds the repositories under the code folders and the emails in them (init --scan), and adds the
       // ones chosen; then onDone.
       function finder(onDone) {
-        const roots = Object.assign(el("textarea", ""), { rows: 3 });
-        const out = el("div", ""), msg = el("p", "");
+        // The folders to look in: the ones gitfolio saved or suggests, and the ones picked in the system's
+        // own window (Finder, File Explorer), no path to type.
+        let roots = [];
+        const folders = el("div", ""), out = el("div", ""), msg = el("p", "");
+        const drawFolders = () => folders.replaceChildren(
+          ...roots.map((r) => el("div", "item", el("span", "", r),
+            el("div", "item-actions", button(t("Remove"), () => { roots = roots.filter((x) => x !== r); drawFolders(); })))),
+          el("div", "row", button(t("Add a folder…"), async () => {
+            const picked = await call("pick_folder");
+            if (picked && !roots.includes(picked)) roots.push(picked), drawFolders();
+          }), button(t("Find repositories"), () => find(true))));
         async function find(useRoots) {
-          const args = ["init", "--scan"];
-          if (useRoots) for (const r of roots.value.split("\n").map((s) => s.trim()).filter(Boolean)) args.push("--root", r);
+          const args = ["init", "--scan", ...(useRoots ? roots.flatMap((r) => ["--root", r]) : [])];
           await fill(out, async () => {
             const s = await gitfolio(...args);
-            roots.value = s.roots.join("\n");
+            roots = s.roots;
+            drawFolders();
             const found = s.emails.map((e) => [e, checkbox(e.work || e.verified)]);
             // Like init: the ones with the user's commits, not collected yet.
             const repos = s.repositories.filter((r) => r.ownCommits > 0 && !r.registered).map((r) => [r, checkbox(true)]);
@@ -159,8 +168,8 @@
           if (!errors.length) await onDone();
         }
         find(false);
-        return el("div", "", el("p", "", t("Folders to look in for repositories, one per line:")), roots,
-          el("div", "row", button(t("Find repositories"), () => find(true))), out, msg);
+        drawFolders();
+        return el("div", "", el("p", "", t("Folders to look in for repositories:")), folders, out, msg);
       }
 
       // One repository's package manager files (deps --json): the ones allowed are read, the others never.
@@ -294,7 +303,10 @@
         const showHistory = (...all) => fill(history, async () => drawHistory(await gitfolio("history", ...all)));
         const today = () => { const d = new Date(); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, "0")).join("-"); };
         const exported = el("p", "");
-        const save = async () => { exported.textContent = t("Saved as {path}", { path: await call("export", { date: today() }) }); };
+        const save = async () => {
+          const path = await call("export", { date: today() }); // none: the user cancelled the save window
+          if (path) exported.textContent = t("Saved as {path}", { path });
+        };
         main.replaceChildren(
           el("h1", "", t("Privacy")),
           el("h2", "", t("Blocked words")),
@@ -307,7 +319,7 @@
           history,
           el("h2", "", t("Everything collected")),
           el("p", "dim", t("The commits, dependencies and statistics collected on this computer, as one JSON file.")),
-          el("div", "row", button(t("Export to Downloads"), () => act(exported, save))),
+          el("div", "row", button(t("Export…"), () => act(exported, save))),
           exported,
           msg);
       }
