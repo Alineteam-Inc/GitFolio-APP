@@ -269,6 +269,23 @@ const TECH_ICONS = {
   "unreal engine": "unrealengine", "vite": "vitejs", "vue": "vuejs", "webpack": "webpack", "zig": "zig",
 };
 
+// A tile's name (data-name) on hover, drawn by the page: the web view shows no system tooltip (title). Above
+// the tile, or below it near the top, and kept inside the window: centred on a tile at an edge, it would be cut.
+const tip = el("div", "tip");
+tip.hidden = true;
+document.body.append(tip);
+function named(tile) {
+  tile.onmouseenter = () => {
+    tip.textContent = tile.dataset.name;
+    tip.hidden = false;
+    const r = tile.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = `${Math.max(4, Math.min(innerWidth - w - 4, r.left + r.width / 2 - w / 2))}px`;
+    tip.style.top = `${r.top - h - 4 >= 4 ? r.top - h - 4 : r.bottom + 4}px`;
+  };
+  tile.onmouseleave = () => (tip.hidden = true);
+  return tile;
+}
+
 // gitfolio stack --json: every one of each kind, the longest used first, as icons (Devicon, in icons/tech)
 // named on hover, wrapping onto more lines as the window's width allows; a name without an icon shows its
 // first letters.
@@ -285,9 +302,8 @@ function drawStack(u) {
         icon ? Object.assign(el("img", ""), { src: `icons/tech/${icon}.svg`, alt: "" })
           : el("span", "letters", (words.length > 1 ? words.map((w) => w[0]).join("") : x.name).slice(0, 3)));
       tile.dataset.name = [x.name, months(x.careerMonths), x.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
-      // The system's own tooltip: its window may go past the tray window's edge, where a page's cannot.
-      tile.title = tile.ariaLabel = tile.dataset.name;
-      return tile;
+      tile.ariaLabel = tile.dataset.name;
+      return named(tile);
     })),
   ]);
 }

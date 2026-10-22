@@ -65,6 +65,8 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 /* A light tile in either theme: icons in their own colours (MySQL's dark blue, too) show on it. */
 .tech { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; background: #f2f2f2; color: #333; }
 .tech img { width: 20px; height: 20px; }
+.tip { position: fixed; z-index: 2; max-width: calc(100vw - 8px); font-size: 11px; padding: 2px 6px; border-radius: 4px; pointer-events: none;
+  background: Canvas; color: CanvasText; border: 1px solid rgb(127 127 127 / 0.4); }
 .tech .letters { font-size: 10px; font-weight: bold; }
 .tech.hidden { opacity: 0.4; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
