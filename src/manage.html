@@ -31,6 +31,8 @@
         opacity: 1; color: color-mix(in srgb, CanvasText 60%, transparent); } /* dim by colour: the rows under it must not show through */
       table.repos tr.more:has(.repo-box:empty) { display: none; } /* opened by details or removing */
       .repo-box { padding: 2px 0 6px; }
+      .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; padding: 6px 8px; }
+      .facts span { overflow-wrap: anywhere; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
       main > .foot { justify-content: space-between; }
       /* The time picker: steppers for hour and minute, AM/PM as two joined buttons, the chosen one lit. */
@@ -241,6 +243,26 @@
           msg);
       }
 
+      // gitfolio status <path> --json: one repository, as facts in two columns, numbers beside their words.
+      function drawRepo(d) {
+        const n = (x) => (x ?? 0).toLocaleString();
+        const most = (o) => Object.entries(o ?? {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${n(v)}`).join(" · ");
+        const service = { GITHUB: "GitHub", GITLAB: "GitLab", BITBUCKET: "Bitbucket" }[d.service] ?? d.service;
+        const facts = [
+          ["Where", d.namespace ? [service, d.namespace].filter(Boolean).join(" · ") : t("never (no remote)")],
+          ["Path", home(d.path)],
+          ["Commits", t("{n}, {sent} sent", { n: n(d.commits), sent: n(d.sent) }) + (d.waiting ? ` · ${t("waiting")}` : "")],
+          ["Changes", t("{f} file changes, {c} files created", { f: n(d.fileChanges), c: n(d.filesCreated) })],
+          ["Lines", `+${n(d.linesAdded)} −${n(d.linesDeleted)}`],
+          ["AI", [t("{n} of {total} commits", { n: n(d.aiCommits), total: n(d.commits) }), most(d.agents)].filter(Boolean).join(" · ")],
+          ["Lines by language", most(d.languages) || "-"],
+          ["Dependencies", d.dependencies == null ? t("off") : Object.entries(d.dependencies).map(([eco, names]) => `${eco} ${names.length}`).join(" · ") || "-"],
+          ["Hooks", t(d.hooks)],
+          ["Last commit", d.lastCommit || "-"],
+        ];
+        return [el("div", "facts", ...facts.flatMap(([k, v]) => [el("span", "dim", t(k)), el("span", "", v)]))];
+      }
+
       function confirmRemove(r, box) {
         const purge = checkbox(), msg = el("p", "");
         const remove = async () => {
@@ -285,7 +307,7 @@
               el("td", "", t(r.hooks)),
               el("td", "", r.lastCommit || "-"),
               el("td", "icons",
-                iconButton(ICONS.info, t("Details"), panel("details", () => fill(box, async () => [drawValue(await gitfolio("status", r.path))]))),
+                iconButton(ICONS.info, t("Details"), panel("details", () => fill(box, async () => drawRepo(await gitfolio("status", r.path))))),
                 iconButton(ICONS.refresh, t("Collect again"), panel("collect", () => fill(box, async () => drawScan(await gitfolio("scan", r.path))))),
                 iconButton(ICONS.close, t("Remove…"), panel("remove", () => confirmRemove(r, box))))),
             el("tr", "more", Object.assign(el("td", "", box), { colSpan: 6 })));
