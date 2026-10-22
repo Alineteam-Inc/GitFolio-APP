@@ -54,7 +54,8 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .type-ai { display: flex; align-items: center; gap: 6px; }
 /* The tech stack as icons, named on hover. */
 .techs { display: flex; flex-wrap: wrap; gap: 6px; }
-.tech { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; background: rgb(127 127 127 / 0.15); }
+/* A light tile in either theme: icons in their own colours (MySQL's dark blue, too) show on it. */
+.tech { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; background: #f2f2f2; color: #333; }
 .tech img { width: 20px; height: 20px; }
 .tech .letters { font-size: 10px; font-weight: bold; }
 .tech.hidden { opacity: 0.4; }

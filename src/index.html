@@ -8,7 +8,11 @@
     <style>
       /* The content scrolls between the name and the foot; the foot's icons stay put. */
       body { display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
-      main { flex: 1; overflow: auto; scrollbar-gutter: stable; padding-right: 4px; } /* room for the scrollbar, off the text */
+      main { flex: 1; overflow: auto; scrollbar-gutter: stable; padding: 0 4px 10px 0; } /* room for the scrollbar, off the text, and at the foot */
+      /* The state: the account at the left, the sync mode at the right; the rest under them at the right. */
+      .state-line { display: flex; justify-content: space-between; gap: 8px; }
+      .state-line span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .right { text-align: right; justify-content: flex-end; }
       #state { margin-bottom: 8px; }
       footer { display: flex; align-items: center; gap: 4px; padding-top: 8px; border-top: 1px solid rgb(127 127 127 / 0.2); }
       footer .spacer { flex: 1; }
@@ -46,11 +50,12 @@
         const last = s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet");
         const result = el("div", "");
         return [
-          el("p", "dim", `${s.account} · ${t(local ? "local mode" : "automatic")} · ${last}`),
-          s.lastSyncError ? el("p", "error", s.lastSyncError) : "",
+          el("div", "state-line", el("span", "", s.account), el("span", "dim", t(local ? "local mode" : "automatic"))),
+          el("p", "dim right", last),
+          s.lastSyncError ? el("p", "error right", s.lastSyncError) : "",
           // Local mode sends nothing by itself, so what is not sent only grows there.
-          !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
-          el("div", "row", button(t("Sync now"), () => fill(result, async () => drawSync(await gitfolio("sync"))))),
+          !local && s.unsent ? el("p", "right", t("{n} commits not sent yet", { n: s.unsent })) : "",
+          el("div", "row right", button(t("Sync now"), () => fill(result, async () => drawSync(await gitfolio("sync"))))),
           result,
         ];
       }
