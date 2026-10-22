@@ -20,7 +20,9 @@
       main label { margin: 10px 0; }
       main .row { margin: 14px 0; }
       main > .actions { margin-top: auto; padding-top: 20px; }
-      main td .row { margin: 0; } /* buttons in a table's cell, level with its words */
+      main td .row { margin: 0; }
+      body.setup { grid-template-columns: 1fr; }
+      body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
       #progress { position: fixed; right: 16px; bottom: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
     </style>
   </head>
@@ -369,9 +371,15 @@
           el("div", "actions", button(t("Uninstall GitFolio"), uninstall)));
       }
 
-      // The first-time setup, as gitfolio init asks it: a step answering null is skipped.
+      // The first-time setup, as an installer goes: the welcome and the data policy, what GitFolio needs,
+      // then as gitfolio init asks it. A step answering null is skipped.
       async function setup(main) {
         const steps = [
+          async (next) => {
+            // Without git, gitfolio gives no policy yet: the welcome goes on, the policy is in its section later.
+            const { policy } = await gitfolio("init", "--policy").catch(() => ({ policy: "" }));
+            return [el("h1", "", t("Welcome to GitFolio")), el("p", "pre", policy.trim()), el("div", "actions", button(t("Continue"), next))];
+          },
           // GitFolio's two needs, in the order they are installed: git, then gitfolio for git hooks. The next
           // thing to do is the page's main button, at its foot, Check again on its left.
           async (next) => {
@@ -411,10 +419,6 @@
             }
             await check();
             return [el("h1", "", t("Before you start")), box, bar];
-          },
-          async (next) => {
-            const { policy } = await gitfolio("init", "--policy");
-            return [el("h1", "", t("Welcome to GitFolio")), el("p", "pre", policy.trim()), el("div", "actions", button(t("Continue"), next))];
           },
           async (next) => ((await gitfolio("whoami")).loggedIn ? null : [el("h1", "", t("Log in or sign up")), loginForm(next)]),
           async (next) => [el("h1", "", t("Choose the repositories to collect")), finder(next)],
@@ -475,6 +479,7 @@
 
       function go(name) {
         const draw = SECTIONS[name] ?? setup;
+        document.body.classList.toggle("setup", draw === setup); // the setup alone, as an installer, no menu
         for (const b of $("nav").children) b.className = b.dataset.section === name ? "on" : "";
         const main = $("main");
         main.replaceChildren(el("p", "dim", "…"));

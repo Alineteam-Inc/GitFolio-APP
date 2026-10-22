@@ -392,6 +392,17 @@ pub fn run() {
 
             glass(WebviewWindowBuilder::from_config(app, &window_config(app.handle(), "main"))?).build()?;
 
+            // Until GitFolio is set up (and the first time), its setup opens by itself, as an installer
+            // would: installing GitFolio goes on there. Off the main thread, as it asks gitfolio first.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let status = cli().and_then(|(cli, _)| run_cli(&cli, &["status"], None));
+                let set_up = status.ok().and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).is_some_and(|v| v["setUp"] == true);
+                if !set_up {
+                    let _ = open_manage(&handle, "setup");
+                }
+            });
+
             // Linux sends no tray click events, so the menu is the way to the windows there.
             let [open, uninstall, quit] = menu_words(&cli().map(|(cli, _)| lang_of(&cli)).unwrap_or_default());
             let open = MenuItem::with_id(app, "open", open, true, None::<&str>)?;
