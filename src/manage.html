@@ -21,17 +21,16 @@
       main .row { margin: 14px 0; }
       main > .actions { margin-top: auto; padding-top: 20px; }
       main td .row { margin: 0; }
-      /* The repositories: one line each, columns of fixed width, words cut short rather than folded or overlapping. */
-      .repos { padding: 0 10px; }
-      .repo { display: grid; grid-template-columns: minmax(0, 1fr) 6ch 8ch 6ch 10ch 92px; gap: 10px; align-items: center; min-height: 36px;
-        border-bottom: 1px solid rgb(127 127 127 / 0.2); }
-      .repo > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .repo .num { text-align: right; }
-      .repo .icons { display: flex; gap: 4px; justify-content: flex-end; }
-      .repo.head { position: sticky; top: 0; z-index: 1; min-height: 30px; background: Canvas; font-size: 11px; }
-      .repo.head span { opacity: 0.6; }
-      .repo-box:empty { display: none; }
-      .repo-box { padding: 6px 0 10px; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
+      /* The repositories: one line each. The counts' columns are as wide as their words and never cut; the name and
+         path take the rest (width 100%, max-width 0) and are cut short only when that is too narrow. */
+      table.repos th, table.repos td { white-space: nowrap; padding: 7px 8px; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
+      table.repos td.where { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      table.repos .num { text-align: right; }
+      table.repos td.icons { padding: 2px 4px; }
+      table.repos thead th { position: sticky; top: 0; z-index: 1; background: Canvas; font-size: 11px;
+        opacity: 1; color: color-mix(in srgb, CanvasText 60%, transparent); } /* dim by colour: the rows under it must not show through */
+      table.repos tr.more:has(.repo-box:empty) { display: none; } /* opened by details or removing */
+      .repo-box { padding: 2px 0 6px; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
       main > .foot { justify-content: space-between; }
       /* The time picker: steppers for hour and minute, AM/PM as two joined buttons, the chosen one lit. */
@@ -262,25 +261,28 @@
         if (!s.setUp) return go("setup");
         const local = s.syncMode === "local";
         const result = el("div", ""), adding = el("div", "");
-        // The repositories, one line each in a box that scrolls under its fixed head: name and path (home as ~),
-        // its counts in columns of fixed width, and icon buttons; details and removing open under the line.
-        const table = el("div", "scroll tall repos",
-          el("div", "repo head", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("span", h === "Commits" ? "num" : "", h && t(h)))));
+        // The repositories, one line each, in a table that scrolls in its box under its fixed head: the counts'
+        // columns as wide as their words (never cut), the name and path taking the rest, cut short (… ) only when
+        // the window is narrow, whole on hover; icon buttons; details and removing open under the line.
+        const rows = el("tbody", "");
+        const table = el("div", "scroll tall", el("table", "repos",
+          el("thead", "", el("tr", "", ...["Repository", "Commits", "Sent", "Hooks", "Last commit", ""].map((h) => el("th", h === "Commits" ? "num" : "", h && t(h))))),
+          rows));
         for (const r of s.repositories) {
           const box = el("div", "repo-box");
-          const where = el("span", "", el("strong", "", r.name), " ", el("span", "dim", home(r.path)));
+          const where = el("td", "where", el("strong", "", r.name), " ", el("span", "dim", home(r.path)));
           where.title = `${r.name} · ${home(r.path)}`;
-          table.append(
-            el("div", "repo", where,
-              el("span", "num", String(r.commits)),
-              el("span", "", r.namespace === "" ? t("never (no remote)") : r.waiting ? t("waiting") : String(r.sent)),
-              el("span", "", t(r.hooks)),
-              el("span", "", r.lastCommit || "-"),
-              el("span", "icons",
+          rows.append(
+            el("tr", "", where,
+              el("td", "num", String(r.commits)),
+              el("td", "", r.namespace === "" ? t("never (no remote)") : r.waiting ? t("waiting") : String(r.sent)),
+              el("td", "", t(r.hooks)),
+              el("td", "", r.lastCommit || "-"),
+              el("td", "icons",
                 iconButton(ICONS.info, t("Details"), () => fill(box, async () => [drawValue(await gitfolio("status", r.path))])),
                 iconButton(ICONS.refresh, t("Collect again"), () => fill(box, async () => drawScan(await gitfolio("scan", r.path)))),
                 iconButton(ICONS.close, t("Remove…"), () => confirmRemove(r, box)))),
-            box);
+            el("tr", "more", Object.assign(el("td", "", box), { colSpan: 6 })));
         }
         main.replaceChildren(
           el("header", "", el("h1", "", t("Overview")), el("div", "row",
