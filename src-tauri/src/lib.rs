@@ -181,26 +181,28 @@ fn allowed(args: &[String]) -> bool {
     }
 }
 
-/// Whether `gitfolio config --json` names a server of its own (apiUrl): a test server, as a build from
-/// source works with aline.team itself without one.
-fn test_server_set(config: &str) -> bool {
-    serde_json::from_str::<serde_json::Value>(config).is_ok_and(|v| v["apiUrl"].as_str().is_some_and(|u| !u.is_empty()))
-}
-
 /// Runs a gitfolio command for a window (see run_cli), its progress shown there.
 #[tauri::command]
 async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String> {
     if !allowed(&args) {
         return Err(format!("GitFolio does not run gitfolio {}", args.join(" ")));
     }
-    let cli = cli()?.0;
-    // A development build logs in to a test server only, never to aline.team itself: without a login,
-    // nothing else reaches a server.
-    if cfg!(debug_assertions) && args[0] == "login" && std::env::var_os("GITFOLIO_API_URL").is_none()
-        && !test_server_set(&run_cli(&cli, &["config"], None)?)
-    {
-        return Err("A development build logs in to a test server only: name it first, in this HOME, with gitfolio config api-url <address>.".into());
+    // A development build is started with a test HOME and a test server (GITFOLIO_API_URL, which its
+    // gitfolio, built from source, takes): it logs in to that server only, never to aline.team itself,
+    // and adds only repositories in that HOME, as the hooks it installs go into the repository, where the
+    // gitfolio in real use may have its own.
+    if cfg!(debug_assertions) {
+        if args[0] == "login" && std::env::var_os("GITFOLIO_API_URL").is_none() {
+            return Err("This development build has no test server to log in to.".into());
+        }
+        // Both as they really are: on macOS a temporary folder's /var is /private/var.
+        let real = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
+        let home = real(&std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default());
+        if args[0] == "add" && !args.get(1).is_some_and(|p| real(Path::new(p)).starts_with(&home)) {
+            return Err("This development build adds only repositories in its test folder.".into());
+        }
     }
+    let cli = cli()?.0;
     let progress = Some((webview.app_handle().clone(), webview.label().to_string()));
     run_cli(&cli, &args.iter().map(String::as_str).collect::<Vec<_>>(), progress)
 }
@@ -378,12 +380,6 @@ mod tests {
         fs::write(&p, format!("#!/bin/sh\necho '{out}'\n")).unwrap();
         fs::set_permissions(&p, fs::Permissions::from_mode(0o755)).unwrap();
         p
-    }
-
-    #[test]
-    fn test_server() {
-        assert!(test_server_set(r#"{"deps":false,"apiUrl":"https://test.example"}"#));
-        assert!(!test_server_set(r#"{"deps":false}"#) && !test_server_set(r#"{"apiUrl":""}"#) && !test_server_set("not json"));
     }
 
     #[test]
