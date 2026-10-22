@@ -155,6 +155,36 @@ function drawValue(v) {
   return el("span", "", fmt(v));
 }
 
+// The developer types' pictures as aline.team draws them (as gitfolio's stats.go has them): 11 squares wide,
+// a letter a square's color, "." empty. Like aline.team's name and logo, they are aline.team's.
+const DEV_TYPE_COLORS = { g: "#39D353", b: "#6699CC", y: "#D9E0A3", s: "#7CB687", w: "#E8F0EA" };
+const DEV_TYPE_ART = {
+  BUILDER: [".gg........", "gggg.gg....", "gggggggg...", "....gggg...", "...........", "...gg..gg..", "..gggggggg.", "..gggggggg."],
+  EXPLORER: [".....b.....", "....bbb....", "...bbbbb...", "...bbybb...", "...byyyb...", "...bbybb...", "...bbbbb...", "..bbbbbbb..",
+    ".bb.bbb.bb.", ".b..y.y..b.", "....y.y...."],
+  FIXER: ["..s.....s..", "...s...s...", "...sssss...", "..sssssss..", "s.sysssys.s", ".sssysysss.", "s.sssysss.s", ".sssysysss.",
+    "s.sysssys.s", "...sssss..."],
+  KEEPER: ["..sssssss..", ".sssssssss.", ".sssssssss.", ".sssssswss.", ".ssssswwss.", ".swsswwsss.", ".swwwwssss.", "..swwssss..",
+    "..sswssss..", "...sssss...", "....sss...."],
+  LEADER: ["y....y....y", "yy..yyy..yy", "yyy.yyy.yyy", "yyyyyyyyyyy", "yyyyyyyyyyy", "yybyybyybyy", "yyyyyyyyyyy", "yyyyyyyyyyy"],
+  SPRINTER: ["....yyyyy..", "...yyyyy...", "...yyyy....", "..yyyy.....", "..yyyyyyyy.", ".yyyyyyyy..", ".....yyy...", "....yyy....",
+    "...yyy.....", "..yy.......", ".y........."],
+};
+
+// A developer type's picture, `size` pixels a square; none for a type without one.
+function drawArt(title, size) {
+  const rows = DEV_TYPE_ART[title];
+  if (!rows) return "";
+  const art = el("div", "art");
+  Object.assign(art.style, { gridTemplateColumns: `repeat(11, ${size}px)`, gridAutoRows: `${size}px` });
+  for (const c of rows.join("")) {
+    const square = el("span", "");
+    if (c !== ".") square.style.background = DEV_TYPE_COLORS[c];
+    art.append(square);
+  }
+  return art;
+}
+
 const SCORES = ["agility", "stability", "contribution", "adaptability", "consistency"];
 const title = (k) => k[0].toUpperCase() + k.slice(1); // "agility" → "Agility", the English of t
 
@@ -162,8 +192,9 @@ const title = (k) => k[0].toUpperCase() + k.slice(1); // "agility" → "Agility"
 function drawStats({ type: d, saved, fetchedAt }) {
   if (!d) return [el("p", "dim", t("No developer type yet: aline.team makes it from the commits sent."))];
   return [
-    el("h1", "", d.devTypeTitle),
-    el("p", "dim", t("{position} · with AI {type}", { position: d.dominantPosition ?? "-", type: d.devTypeTitleAi ?? "-" })),
+    el("div", "type", drawArt(d.devTypeTitle, 5), el("div", "",
+      el("h1", "", d.devTypeTitle),
+      el("p", "dim type-ai", t("{position} · with AI {type}", { position: d.dominantPosition ?? "-", type: d.devTypeTitleAi ?? "-" }), drawArt(d.devTypeTitleAi, 2)))),
     el("p", "", d.devTypeDescription ?? ""),
     el("p", "dim", d.devTypeHashTags ?? ""),
     el("h2", "", t("Scores")),
@@ -180,17 +211,46 @@ function drawStats({ type: d, saved, fetchedAt }) {
 
 const months = (m) => (m == null ? "" : m < 12 ? t("{m}m", { m }) : t("{y}y {m}m", { y: Math.floor(m / 12), m: m % 12 }));
 
-// gitfolio stack --json: the longest used of each kind, `top` of each.
+const TECH_ICONS = {
+  ".net": "dot-net", "android": "android", "angular": "angular", "ansible": "ansible", "asp.net": "dotnetcore",
+  "aws": "amazonwebservices", "bootstrap": "bootstrap", "c": "c", "c#": "csharp", "c++": "cplusplus",
+  "clojure": "clojure", "css": "css3", "dart": "dart", "django": "django", "docker": "docker",
+  "elasticsearch": "elasticsearch", "electron": "electron", "elixir": "elixir", "erlang": "erlang",
+  "express": "express", "f#": "fsharp", "fastapi": "fastapi", "firebase": "firebase", "flask": "flask",
+  "flutter": "flutter", "gdscript": "godot", "git": "git", "github actions": "githubactions", "go": "go",
+  "gradle": "gradle", "graphql": "graphql", "groovy": "groovy", "haskell": "haskell", "hibernate": "hibernate",
+  "html": "html5", "java": "java", "javascript": "javascript", "jenkins": "jenkins", "jest": "jest",
+  "jquery": "jquery", "julia": "julia", "junit": "junit", "kafka": "apachekafka", "kotlin": "kotlin",
+  "kubernetes": "kubernetes", "laravel": "laravel", "linux": "linux", "lua": "lua", "mariadb": "mariadb",
+  "maven": "maven", "mongodb": "mongodb", "mysql": "mysql", "nestjs": "nestjs", "next.js": "nextjs",
+  "nginx": "nginx", "node.js": "nodejs", "numpy": "numpy", "nuxt": "nuxtjs", "objective-c": "objectivec",
+  "oracle": "oracle", "pandas": "pandas", "perl": "perl", "php": "php", "postgresql": "postgresql",
+  "powershell": "powershell", "pytest": "pytest", "python": "python", "pytorch": "pytorch", "quarkus": "quarkus",
+  "r": "r", "rabbitmq": "rabbitmq", "react": "react", "react native": "react", "redis": "redis", "redux": "redux",
+  "ruby": "ruby", "ruby on rails": "rails", "rust": "rust", "scala": "scala", "shell": "bash",
+  "solidity": "solidity", "spring boot": "spring", "spring cloud": "spring", "spring security": "spring",
+  "sqlite": "sqlite", "svelte": "svelte", "swift": "swift", "tailwind css": "tailwindcss", "tauri": "tauri",
+  "tensorflow": "tensorflow", "terraform": "terraform", "typescript": "typescript", "unity": "unity",
+  "unreal engine": "unrealengine", "vite": "vitejs", "vue": "vuejs", "webpack": "webpack", "zig": "zig",
+};
+
+// gitfolio stack --json: the longest used of each kind, `top` of each, as icons (Devicon, in icons/tech)
+// named on hover; a name without one shows its first letters.
 function drawStack(u, top = 6) {
   const kinds = ["languages", "frameworks", "libraries"].map((k) => [k,
     [...(u[k] ?? [])].sort((a, b) => (b.careerMonths ?? 0) - (a.careerMonths ?? 0)).slice(0, top)]);
   if (kinds.every(([, items]) => !items.length)) return [el("p", "dim", t("No tech stack yet."))];
   return kinds.filter(([, items]) => items.length).flatMap(([k, items]) => [
     el("h2", "", t(title(k))),
-    el("div", "chips", ...items.map((x) => {
-      const c = el("span", x.isHidden ? "chip hidden" : "chip", `${x.name} ${months(x.careerMonths)}`);
-      if (x.isHidden) c.title = t("Hidden on your aline.team profile");
-      return c;
+    el("div", "techs", ...items.map((x) => {
+      const icon = TECH_ICONS[x.name.toLowerCase()];
+      const words = x.name.split(/\s+/);
+      const tile = el("span", x.isHidden ? "tech hidden" : "tech",
+        icon ? Object.assign(el("img", ""), { src: `icons/tech/${icon}.svg`, alt: "" })
+          : el("span", "letters", (words.length > 1 ? words.map((w) => w[0]).join("") : x.name).slice(0, 3)));
+      tile.dataset.name = [x.name, months(x.careerMonths), x.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
+      tile.ariaLabel = tile.dataset.name;
+      return tile;
     })),
   ]);
 }
