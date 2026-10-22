@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -10,6 +12,37 @@ use tauri_plugin_positioner::{Position, WindowExt};
 const NEAR_TRAY: Position = Position::TrayCenter;
 #[cfg(not(target_os = "macos"))]
 const NEAR_TRAY: Position = Position::TrayBottomCenter;
+
+/// Runs gitfolio with --json: its JSON on success, its JSON error (or, from a CLI without --json, its
+/// message) on failure. Progress and notices go to stderr and are left out. Its stdin is closed
+/// (`output`), so it asks nothing and, without a login, answers loginFirst.
+// ponytail: finds gitfolio on PATH, which an app started from Finder lacks; bundle it as a sidecar for release builds.
+fn gitfolio(args: &[&str]) -> Result<String, String> {
+    let out = Command::new("gitfolio").args(args).arg("--json").output().map_err(|e| e.to_string())?;
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    if out.status.success() {
+        Ok(stdout)
+    } else if stdout.trim().is_empty() {
+        Err(String::from_utf8_lossy(&out.stderr).into_owned())
+    } else {
+        Err(stdout)
+    }
+}
+
+// In local mode, stats and stack first send the commits not sent yet (a sync).
+
+/// The developer type and its five scores: the one saved here, or aline.team's when there is none
+/// for this year or with refresh.
+#[tauri::command]
+async fn stats(refresh: bool) -> Result<String, String> {
+    gitfolio(if refresh { &["stats", "--refresh"] } else { &["stats"] })
+}
+
+/// How long each language, framework and library was used, from aline.team each time.
+#[tauri::command]
+async fn stack() -> Result<String, String> {
+    gitfolio(&["stack"])
+}
 
 fn show(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
@@ -67,6 +100,7 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
+        .invoke_handler(tauri::generate_handler![stats, stack])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
