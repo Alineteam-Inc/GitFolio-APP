@@ -2,8 +2,11 @@
 
 /* Each system's own code font: SF Mono on macOS, Consolas on Windows, Liberation or DejaVu Sans Mono on Linux. */
 :root { color-scheme: light dark; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace; }
-/* The macOS window glass of the tray window shows through, toned down to keep the text readable. */
-:root.glass { background: color-mix(in srgb, Canvas 60%, transparent); }
+/* The macOS window glass of the tray window shows through, toned down to keep the text readable: the tone
+   rounded as the glass is (lib.rs, 16), behind the page, as a root's or body's background would fill the
+   window's square. */
+:root.glass { background: transparent; }
+:root.glass body::before { content: ""; position: fixed; inset: 0; z-index: -1; border-radius: 16px; background: color-mix(in srgb, Canvas 60%, transparent); }
 body { margin: 0; padding: 14px; }
 [hidden] { display: none !important; } /* over .row and the like, which set a display of their own */
 header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
