@@ -298,10 +298,10 @@ function drawStack(u) {
     el("div", "techs", ...items.map((x) => {
       const icon = TECH_ICONS[x.name.toLowerCase()];
       const words = x.name.split(/\s+/);
-      const tile = el("span", x.isHidden ? "tech hidden" : "tech",
+      const tile = el("span", "tech",
         icon ? Object.assign(el("img", ""), { src: `icons/tech/${icon}.svg`, alt: "" })
           : el("span", "letters", (words.length > 1 ? words.map((w) => w[0]).join("") : x.name).slice(0, 3)));
-      tile.dataset.name = [x.name, months(x.careerMonths), x.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
+      tile.dataset.name = [x.name, months(x.careerMonths)].filter(Boolean).join(" · ");
       tile.ariaLabel = tile.dataset.name;
       return named(tile);
     })),
@@ -347,11 +347,11 @@ function drawTimeline(u) {
         const runs = (r.activityMonths ?? []).map(at).reduce((rs, m) => // ["2023-04", "2023-05", "2023-08"] → [[04, 05], [08, 08]]
           (rs.length && m === rs.at(-1)[1] + 1 ? (rs.at(-1)[1] = m) : rs.push([m, m]), rs), []);
         const bars = (runs.length ? runs : [[r.from, r.to]]).map(([a, b]) => {
-          const bar = named(Object.assign(el("i", `tl-bar ${r.kind}${r.isHidden ? " hidden" : ""}`), {
+          const bar = named(Object.assign(el("i", `tl-bar ${r.kind}`), {
             style: `left: ${x(a)}; width: max(6px, calc(${x(b + 1)} - ${x(a)}))`,
           }));
           bar.dataset.name = [r.name, a === b ? month(a) : `${month(a)} – ${month(b)}`, months(r.careerMonths),
-            r.projectCount != null && t("{n} projects", { n: r.projectCount }), r.isHidden && t("Hidden on your aline.team profile")].filter(Boolean).join(" · ");
+            r.projectCount != null && t("{n} projects", { n: r.projectCount })].filter(Boolean).join(" · ");
           return bar;
         });
         return el("div", "tl-row",

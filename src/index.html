@@ -60,20 +60,22 @@
         ];
       }
 
-      // The state first, from this computer only; then, with an account, the developer type and stack:
-      // one after the other, as each may sync first and the second then finds nothing left to send. A daily
-      // refresh by itself leaves them be in local mode, where asking for them sends what was collected.
+      // The state first; once set up, the developer type from aline.team, with an account, and the tech stack,
+      // worked out on this computer. A daily refresh by itself leaves the type be in local mode, where asking
+      // for it sends what was collected.
       async function load(refresh, byItself = false) {
         await readied;
         let s;
         await fill($("state"), async () => drawState((s = await gitfolio("status"))));
-        if (!s?.account) return $("stats").replaceChildren(), $("stack").replaceChildren();
-        if (byItself && s.syncMode === "local") return;
-        let st;
-        await fill($("stats"), async () => drawStats((st = await gitfolio("stats", ...(refresh ? ["--refresh"] : [])))));
-        // The tray icon: the user's developer type's picture.
-        const icon = artPixels(st?.type?.devTypeTitle, 4);
-        if (icon) call("set_tray_icon", icon).catch(() => {});
+        if (!s?.setUp) return $("stats").replaceChildren(), $("stack").replaceChildren();
+        if (!s.account) $("stats").replaceChildren();
+        else if (!(byItself && s.syncMode === "local")) {
+          let st;
+          await fill($("stats"), async () => drawStats((st = await gitfolio("stats", ...(refresh ? ["--refresh"] : [])))));
+          // The tray icon: the user's developer type's picture.
+          const icon = artPixels(st?.type?.devTypeTitle, 4);
+          if (icon) call("set_tray_icon", icon).catch(() => {});
+        }
         await fill($("stack"), async () => drawStack(await gitfolio("stack")));
       }
 

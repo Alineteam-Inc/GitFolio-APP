@@ -88,9 +88,7 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .tl-track { position: relative; height: 100%; }
 .tl-track b { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgb(127 127 127 / 0.15); } /* a year's line, recessive */
 .tl-bar { position: absolute; top: 7px; height: 8px; border-radius: 4px; }
-.tl-bar.hidden { opacity: 0.35; }
 .tech .letters { font-size: 10px; font-weight: bold; }
-.tech.hidden { opacity: 0.4; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { padding: 2px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
 .chip.hidden { opacity: 0.5; }

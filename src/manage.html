@@ -466,19 +466,20 @@
         main.replaceChildren(el("h1", "", t("Data policy")), el("p", "pre", policy.trim()));
       }
 
+      // The developer type from aline.team, with an account; the tech stack, worked out on this computer, always.
       async function profile(main) {
-        if (!(await gitfolio("status")).account) return main.replaceChildren(el("h1", "", t("Profile")), el("p", "", ...drawError({ code: "loginFirst" })));
+        const account = (await gitfolio("status")).account;
         const stats = el("section", ""), stack = el("section", "");
-        // One after the other: each may sync first in local mode, and the second then finds nothing left to send.
         const load = async (refresh) => {
-          await fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
+          if (account) await fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
+          else stats.replaceChildren(el("p", "", ...drawError({ code: "loginFirst" })));
           await fill(stack, async () => {
             const u = await gitfolio("stack");
             return [drawTimeline(u), ...drawStack(u)];
           });
         };
         main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), button(t("Refresh"), () => load(true))),
-          stats, el("h2", "", t("Tech stack")), stack);
+          stats, el("h2", "", t("Tech stack")), el("p", "dim", t("From the repositories on this computer.")), stack);
         await load(false);
       }
 
