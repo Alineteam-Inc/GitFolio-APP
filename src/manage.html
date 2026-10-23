@@ -38,6 +38,7 @@
       @container (max-width: 520px) { table.repos .hooks { display: none; } }
       @container (max-width: 440px) { table.repos .last { display: none; } }
       .repo-box { padding: 2px 0 6px; }
+      .nested { padding-left: 22px; } /* a repository's files, under its own box */
       .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; padding: 6px 8px; }
       .facts span { overflow-wrap: anywhere; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
@@ -172,9 +173,9 @@
 
       // Finds the repositories under the code folders and the emails in them (init --scan), and adds the
       // ones chosen; then onDone.
-      // Select all and Deselect all, over a list's [item, checkbox] pairs.
-      function bulk(list) {
-        const all = (on) => () => list.forEach(([, c]) => (c.checked = on));
+      // Select all and Deselect all, over a list's [item, checkbox] pairs; then `after`.
+      function bulk(list, after = () => {}) {
+        const all = (on) => () => (list.forEach(([, c]) => (c.checked = on)), after());
         return el("div", "row", button(t("Select all"), all(true)), button(t("Deselect all"), all(false)));
       }
 
@@ -262,11 +263,19 @@
           return !failures.length;
         }
         if (!items.length) return { parts: [el("p", "dim", t("No package manager files.")), msg], save, msg };
+        // A repository's own box, over its files: on when all are, half (−) when some are; it turns them all on or off.
+        const shown = repos.filter((r) => r.files.length).map((r) => {
+          const mine = items.filter(([x]) => x === r), box = checkbox();
+          const show = () => Object.assign(box, { checked: mine.every(([, , c]) => c.checked), indeterminate: mine.some(([, , c]) => c.checked) && !mine.every(([, , c]) => c.checked) });
+          box.onchange = () => (mine.forEach(([, , c]) => (c.checked = box.checked)), show());
+          mine.forEach(([, , c]) => (c.onchange = show));
+          show();
+          return { show, part: el("section", "", label(box, el("strong", "", r.name)),
+            el("div", "nested", ...mine.map(([, f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", ` · ${t("new")}`) : "")))) };
+        });
         return {
-          parts: [bulk(items.map(([, , c]) => [null, c])),
-            el("div", "scroll tall", ...repos.filter((r) => r.files.length).map((r) => el("section", "",
-              el("h2", "", r.name),
-              ...items.filter(([x]) => x === r).map(([, f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", ` · ${t("new")}`) : ""))))),
+          parts: [bulk(items.map(([, , c]) => [null, c]), () => shown.forEach((s) => s.show())),
+            el("div", "scroll tall", ...shown.map((s) => s.part)),
             msg],
           save,
           msg,
