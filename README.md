@@ -31,14 +31,25 @@ brew install --cask alineteam-inc/tap/gitfolio-app
 **Windows:** run the setup. It is not signed yet, so SmartScreen may warn: choose More info › Run anyway.
 The setup puts GitFolio's folder on your PATH, for the git hooks to find the GitFolio CLI.
 
-**Linux:**
+**Linux:** add GitFolio's repository once; then your package manager installs and updates it.
+
+Debian, Ubuntu:
 
 ```sh
-curl -LO https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb
-sudo apt install ./GitFolio_linux_amd64.deb
+sudo install -d /etc/apt/keyrings
+sudo curl -fsSLo /etc/apt/keyrings/gitfolio.asc https://alineteam-inc.github.io/GitFolio-APP/gitfolio.asc
+echo "deb [signed-by=/etc/apt/keyrings/gitfolio.asc] https://alineteam-inc.github.io/GitFolio-APP/apt stable main" | sudo tee /etc/apt/sources.list.d/gitfolio.list
+sudo apt update && sudo apt install git-folio
 ```
 
-or `sudo dnf install ./GitFolio_linux_amd64.rpm`. The tray icon needs AppIndicator support (on GNOME,
+Fedora:
+
+```sh
+printf '[gitfolio]\nname=GitFolio\nbaseurl=https://alineteam-inc.github.io/GitFolio-APP/rpm\nrepo_gpgcheck=1\ngpgcheck=0\ngpgkey=https://alineteam-inc.github.io/GitFolio-APP/gitfolio.asc\n' | sudo tee /etc/yum.repos.d/gitfolio.repo
+sudo dnf install git-folio
+```
+
+Or install a downloaded package: `sudo apt install ./GitFolio_linux_amd64.deb`, `sudo dnf install ./GitFolio_linux_amd64.rpm`. The tray icon needs AppIndicator support (on GNOME,
 the "AppIndicator and KStatusNotifierItem Support" extension); its menu opens the GitFolio window.
 
 **Update:** GitFolio looks for a new version when it starts and once a day, and asks before updating.
@@ -108,14 +119,25 @@ brew install --cask alineteam-inc/tap/gitfolio-app
 **Windows:** 설치 프로그램을 실행합니다. 아직 서명이 없어 SmartScreen이 경고할 수 있습니다. 추가 정보 ›
 실행을 누르세요. 설치 프로그램은 git 훅이 GitFolio CLI를 찾을 수 있도록 GitFolio 폴더를 PATH에 넣습니다.
 
-**Linux:**
+**Linux:** GitFolio 저장소를 한 번 등록하면, 그다음부터 패키지 관리자로 설치하고 업데이트합니다.
+
+Debian, Ubuntu:
 
 ```sh
-curl -LO https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb
-sudo apt install ./GitFolio_linux_amd64.deb
+sudo install -d /etc/apt/keyrings
+sudo curl -fsSLo /etc/apt/keyrings/gitfolio.asc https://alineteam-inc.github.io/GitFolio-APP/gitfolio.asc
+echo "deb [signed-by=/etc/apt/keyrings/gitfolio.asc] https://alineteam-inc.github.io/GitFolio-APP/apt stable main" | sudo tee /etc/apt/sources.list.d/gitfolio.list
+sudo apt update && sudo apt install git-folio
 ```
 
-또는 `sudo dnf install ./GitFolio_linux_amd64.rpm`. 트레이 아이콘에는 AppIndicator 지원이 필요합니다
+Fedora:
+
+```sh
+printf '[gitfolio]\nname=GitFolio\nbaseurl=https://alineteam-inc.github.io/GitFolio-APP/rpm\nrepo_gpgcheck=1\ngpgcheck=0\ngpgkey=https://alineteam-inc.github.io/GitFolio-APP/gitfolio.asc\n' | sudo tee /etc/yum.repos.d/gitfolio.repo
+sudo dnf install git-folio
+```
+
+내려받은 패키지로 설치해도 됩니다: `sudo apt install ./GitFolio_linux_amd64.deb`, `sudo dnf install ./GitFolio_linux_amd64.rpm`. 트레이 아이콘에는 AppIndicator 지원이 필요합니다
 (GNOME에서는 "AppIndicator and KStatusNotifierItem Support" 확장). 아이콘 메뉴에서 GitFolio 창을 엽니다.
 
 **업데이트:** GitFolio는 시작할 때와 하루에 한 번 새 버전을 확인하고, 업데이트할지 묻습니다. 내려받은 파일의
