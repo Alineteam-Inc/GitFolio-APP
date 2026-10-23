@@ -373,10 +373,11 @@
       }
 
       async function account(main) {
-        const w = await gitfolio("whoami");
+        // The login as this computer keeps it, at once: whoami asks aline.team, and the emails below do as well.
+        const { account } = await gitfolio("status");
         const msg = el("p", "");
-        main.replaceChildren(el("h1", "", t("Account")), ...(w.loggedIn
-          ? [el("p", "", t("Logged in to aline.team as {email}", { email: w.email })),
+        main.replaceChildren(el("h1", "", t("Account")), ...(account
+          ? [el("p", "", t("Logged in to aline.team as {email}", { email: account })),
             el("div", "row", button(t("Log out"), () => act(msg, () => gitfolio("logout"), () => go("account")))), msg,
             el("h2", "", t("Work emails")),
             el("p", "dim", t("Commits by any of them count as yours, and aline.team gets them all under the primary one. Verified ones merge the repositories linked to them on aline.team.")),
