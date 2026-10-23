@@ -142,7 +142,7 @@ const when = (t) => t.slice(0, 16).replace("T", " "); // RFC3339 in local time â
 const REMEDIES = {
   loginFirst: ["Log in to aline.team to see this.", "Log in", "account"],
   alreadyLoggedIn: ["You are logged in already. To use another account, log out first.", "Account", "account"],
-  emailTooMany: ["aline.team takes at most 20 verified work emails: remove one to add another.", "Work emails", "account"],
+  emailTooMany: ["aline.team takes at most 20 verified Git author emails: remove one to add another.", "Git author emails", "account"],
   signupConsent: ["This email has no aline.team account yet: agree to the terms to sign up."],
   statsSlow: ["aline.team is still working out your developer type. Refresh in a minute."],
   scheduleLocal: ["Local mode has no daily sync: choose automatic sync first.", "Sync settings", "sync"],

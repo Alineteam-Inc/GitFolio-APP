@@ -136,12 +136,12 @@
         return box;
       }
 
-      // The work emails (email --json): add, verify with a code, make primary, remove.
+      // The Git author emails (email --json): add, verify with a code, make primary, remove.
       function emails() {
         const box = el("div", "");
         const draw = () => fill(box, async () => {
           const { emails } = await gitfolio("email");
-          const add = input("email", t("another work email")), msg = el("p", "");
+          const add = input("email", t("another Git author email")), msg = el("p", "");
           const change = (...args) => act(msg, () => gitfolio("email", ...args), draw);
           return [
             // One line each: the email and what it is, its buttons at the end.
@@ -379,7 +379,7 @@
         main.replaceChildren(el("h1", "", t("Account")), ...(account
           ? [el("p", "", t("Logged in to aline.team as {email}", { email: account })),
             el("div", "row", button(t("Log out"), () => act(msg, () => gitfolio("logout"), () => go("account")))), msg,
-            el("h2", "", t("Work emails")),
+            el("h2", "", t("Git author emails")),
             el("p", "dim", t("Commits by any of them count as yours, and aline.team gets them all under the primary one. Verified ones merge the repositories linked to them on aline.team.")),
             emails()]
           : [loginForm(() => go("account"))]));
