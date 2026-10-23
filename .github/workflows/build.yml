@@ -81,12 +81,27 @@ jobs:
       # Each package under a name without the version, so the README can link to releases/latest/download/<name>.
       # With the updater's signing key (a repository secret), also what the app updates itself from, signed
       # (.sig): the macOS app as .app.tar.gz, the Windows setup and the Linux packages as they are.
+      # With Apple's Developer ID certificate and an App Store Connect API key (repository secrets), the macOS
+      # app is signed with it and notarized; without them it is signed ad hoc (tauri.conf.json).
       - name: Bundle
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
         run: |
+          if [ "$RUNNER_OS" = macOS ] && [ -n "$APPLE_CERTIFICATE" ]; then
+            printf '%s' "$APPLE_API_PRIVATE_KEY" > "$RUNNER_TEMP/AuthKey.p8"
+            export APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          else
+            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_API_ISSUER APPLE_API_KEY
+          fi
+          unset APPLE_API_PRIVATE_KEY
           npm run tauri build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} \
             ${TAURI_SIGNING_PRIVATE_KEY:+--config '{"bundle":{"createUpdaterArtifacts":true}}'}
           b=src-tauri/target/${{ matrix.target }}/release/bundle
@@ -103,9 +118,16 @@ jobs:
       # Installed as a user would, then started: the setup window opens by itself, its picture kept.
       - name: Install and start (macOS)
         if: matrix.name == 'macos_arm64'
+        env:
+          DEVELOPER_ID: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           hdiutil attach dist/*.dmg -nobrowse -mountpoint /tmp/gitfolio
           /tmp/gitfolio/GitFolio.app/Contents/MacOS/gitfolio version --json
+          codesign --verify --deep --strict --verbose=2 /tmp/gitfolio/GitFolio.app
+          if [ -n "$DEVELOPER_ID" ]; then # signed and notarized: macOS opens a download without asking
+            spctl --assess --type execute --verbose=2 /tmp/gitfolio/GitFolio.app
+            xcrun stapler validate /tmp/gitfolio/GitFolio.app
+          fi
           hdiutil detach /tmp/gitfolio
       - name: Install and start (Linux)
         if: runner.os == 'Linux'
