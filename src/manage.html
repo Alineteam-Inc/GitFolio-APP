@@ -563,10 +563,12 @@
             }
           }) };
         };
-        // git is updated where it came from, by gitfolio (git update): an older GitFolio CLI has only the words for how.
+        // git is updated where it came from, by gitfolio git update (0.7.0 on): before it, the arrow would only
+        // say again the words for how, already shown.
+        const gitUpdates = !/^0\.[0-6]\./.test(version ?? "");
         const checkGit = async () => {
           const g = await gitfolio("git", "--latest");
-          return { text: [newest(g.upToDate, g.latest), g.updateHint ? ` ${g.updateHint}` : ""], update: g.upToDate === false && (async () => {
+          return { text: [newest(g.upToDate, g.latest), g.updateHint ? ` ${g.updateHint}` : ""], update: g.upToDate === false && gitUpdates && (async () => {
             progress(t("Updating git…"));
             try {
               const r = await gitfolio("git", "update");
@@ -575,9 +577,6 @@
               if (opened) return [el("p", "", t(opened))];
               if (!r.started) return [el("p", "", r.message ?? ""), r.url ? el("div", "row", button(t("Open the download page"), () => call("open_url", { url: r.url }))) : ""];
               return [el("p", "", el("span", "ok", "✓ "), t("git is now {v}.", { v: (await gitfolio("git")).version }))];
-            } catch (e) {
-              if (e.code !== "usage") throw e;
-              return [el("p", "", g.updateHint ?? "")];
             } finally {
               progress();
             }
