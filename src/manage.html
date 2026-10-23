@@ -129,7 +129,7 @@
             el("p", "", t("Enter the {n}-digit code sent to {email}.", { n: r.codeLength, email: r.email })),
             ...(r.accountExists ? [] : [el("p", "pre dim", r.signupNotice ?? ""), label(agree, t("I agree, and sign up")),
               r.notifyQuestion ? label(notify, r.notifyQuestion) : ""]),
-            el("div", "row", code, button(t("Log in"), () => act(msg, finish, onDone)),
+            el("div", "row", code, button(t(r.accountExists ? "Log in" : "Sign up"), () => act(msg, finish, onDone)),
               // codeExpired: too old, or wrong too many times; a new one is needed
               button(t("Send a new code"), () => act(msg, async () => codeStep(await gitfolio("login", "--email", r.email))))),
             msg);
@@ -190,7 +190,7 @@
           el("div", "row", button(t("Add a folder…"), async () => {
             const picked = await call("pick_folder");
             if (picked && !roots.includes(picked)) roots.push(picked), drawFolders();
-          }), button(t("Find repositories"), () => find(true))));
+          }), button(t("Search these folders"), () => find(true))));
         async function find(useRoots) {
           const args = ["init", "--scan", ...(useRoots ? roots.flatMap((r) => ["--root", r]) : [])];
           await fill(out, async () => {
@@ -210,7 +210,7 @@
               el("p", "dim", t("Commits by the ones you choose count as yours.")),
               bulk(found), el("div", "scroll", ...found.map(([e, c]) => label(c, e.email, el("span", "dim", " · " + [t("{n} repositories", { n: e.repositories }),
                 e.work && t("yours"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · "))))),
-              el("div", "row", button(t("Use the chosen emails"), () => act(msg, useEmails))),
+              el("div", "row", button(t("Add the chosen to Git author emails"), () => act(msg, useEmails))),
               el("h2", "", t("Repositories with your commits, not collected yet ({n})", { n: repos.length })),
               bulk(repos), el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${home(r.path)}`)))),
               el("div", "actions", button(t("Skip"), onDone),
@@ -436,7 +436,7 @@
           label(on, t("Detect dependencies"), el("div", "dim", t("Turning it off deletes the dependencies collected."))),
           d.on ? label(auto, t("Also read them on scan, sync and the daily sync"), el("div", "dim", t("Pushes never read them."))) : "",
           msg,
-          ...(d.on ? [el("div", "row", button(t("Read the files again"), () => set("scan", "--all"))), ...files.parts,
+          ...(d.on ? [el("div", "row", button(t("Find new files"), () => set("scan", "--all"))), ...files.parts,
             el("div", "actions", button(t("Save"), files.save))] : []));
       }
 
@@ -463,7 +463,7 @@
           el("div", "chips", ...(cfg.mask ?? []).map((w) => el("span", "chip", w, " ", button("×", () => config("mask", "rm", w))))),
           el("h2", "", t("Git commands GitFolio runs")),
           label(record, t("Keep git's own record of them"), el("div", "dim", t("Turning it off deletes the record."))),
-          el("div", "row", button(t("Show them"), () => showHistory()), button(t("Show every run kept"), () => showHistory("--all"))),
+          el("div", "row", button(t("Show recent runs"), () => showHistory()), button(t("Show all runs"), () => showHistory("--all"))),
           history,
           el("h2", "", t("Everything collected")),
           el("p", "dim", t("The commits, dependencies and statistics collected on this computer, as one JSON file.")),
@@ -714,7 +714,7 @@
                 return d.repositories.length ? files.parts
                   : [el("p", "", t("Dependency detection is on. No repository is collected yet: choose its files in Dependencies once one is."))];
               });
-              bar.replaceChildren(button(t("Continue"), async () => (await files.save()) && next()));
+              bar.replaceChildren(button(t("Save and continue"), async () => (await files.save()) && next()));
             };
             bar.append(button(t("Yes, choose the files"), choose));
             return [el("h1", "", t("Detect dependencies?")),
@@ -725,7 +725,7 @@
             const time = timeInput("09:00"), msg = el("p", "");
             return [el("h1", "", t("A daily sync?")), el("p", "dim", t("Once a day at a set time, it sends pushes the hooks missed.")),
               el("div", "row", time), msg,
-              el("div", "actions", button(t("No"), next), button(t("Set"), () => act(msg, () => gitfolio("schedule", time.hhmm()), next)))];
+              el("div", "actions", button(t("No"), next), button(t("Turn on"), () => act(msg, () => gitfolio("schedule", time.hhmm()), next)))];
           },
           async (next) => {
             const s = await gitfolio("status");
