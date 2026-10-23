@@ -11,27 +11,41 @@ window. It carries its own GitFolio CLI (`gitfolio`), so nothing else needs inst
 
 ## Install
 
-Download the package for your system from the latest release:
+Each way installs the same app, with its own GitFolio CLI. From the command line, or from a package file
+of the [latest release](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest):
 
-| System | Package |
-|---|---|
-| macOS, Apple silicon | [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_arm64.dmg) |
-| macOS, Intel | [GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_x64.dmg) |
-| Windows 10 and 11 | [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe) |
-| Debian, Ubuntu | [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.deb) |
-| Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) |
+### macOS
 
-**macOS:** open the `.dmg` and drag GitFolio to Applications. It is signed with Apple's Developer ID and
-notarized by Apple, so it opens like any other app. Or, with Homebrew:
+**Command line**, with [Homebrew](https://brew.sh):
 
 ```sh
 brew install --cask alineteam-inc/tap/gitfolio-app
 ```
 
-**Windows:** run the setup. It is not signed yet, so SmartScreen may warn: choose More info › Run anyway.
-The setup puts GitFolio's folder on your PATH, for the git hooks to find the GitFolio CLI.
+**Package file:** [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_arm64.dmg) (Apple silicon) or
+[GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_x64.dmg) (Intel). Open it and drag GitFolio to Applications.
 
-**Linux:** add GitFolio's repository once; then your package manager installs and updates it.
+It is signed with Apple's Developer ID and notarized by Apple, so it opens like any other app.
+
+### Windows (10, 11)
+
+**Command line**, in PowerShell: it installs for you only, without questions; then start GitFolio from
+the Start menu.
+
+```powershell
+$f = "$env:TEMP\GitFolio_windows_x64-setup.exe"
+irm https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe -OutFile $f
+Start-Process $f /S -Wait
+```
+
+**Package file:** [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe). Run it.
+It is not signed yet, so SmartScreen may warn: choose More info › Run anyway.
+
+Either way, the setup puts GitFolio's folder on your PATH, for the git hooks to find the GitFolio CLI.
+
+### Linux (x64, arm64)
+
+**Command line**: add GitFolio's repository once; then your package manager installs and updates it.
 
 Debian, Ubuntu:
 
@@ -49,8 +63,15 @@ printf '[gitfolio]\nname=GitFolio\nbaseurl=https://alineteam-inc.github.io/GitFo
 sudo dnf install git-folio
 ```
 
-Or install a downloaded package: `sudo apt install ./GitFolio_linux_amd64.deb`, `sudo dnf install ./GitFolio_linux_amd64.rpm`. The tray icon needs AppIndicator support (on GNOME,
-the "AppIndicator and KStatusNotifierItem Support" extension); its menu opens the GitFolio window.
+**Package file:**
+
+| Package | Install |
+|---|---|
+| [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.deb) | `sudo apt install ./GitFolio_linux_amd64.deb` |
+| [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) | `sudo dnf install ./GitFolio_linux_amd64.rpm` (openSUSE: `sudo zypper install`) |
+
+The tray icon needs AppIndicator support (on GNOME, the "AppIndicator and KStatusNotifierItem Support"
+extension); its menu opens the GitFolio window.
 
 **Update:** GitFolio looks for a new version when it starts and once a day, and asks before updating.
 It checks the download's signature, installs it (on Linux, after your password) and starts again; your
@@ -75,8 +96,11 @@ to the newest release and the app uses it, so the computer has one version; othe
 
 Open GitFolio › About › Uninstall first: it removes the git hooks GitFolio added (putting back the
 ones that were there before), its daily sync and this computer's login. Your data on aline.team stays.
-On macOS that removes the app too. On Windows, then remove GitFolio in Settings › Apps › Installed
-apps; on Linux, `sudo apt remove git-folio` or `sudo dnf remove git-folio`.
+Then remove the app:
+
+- macOS: Uninstall removes it too; installed with Homebrew, then also `brew uninstall --cask gitfolio-app`.
+- Windows: Settings › Apps › Installed apps › GitFolio › Uninstall.
+- Linux: `sudo apt remove git-folio` or `sudo dnf remove git-folio`.
 
 ## License and name
 
@@ -99,27 +123,40 @@ GitFolio 앱은 터미널 없이 메뉴 막대나 시스템 트레이에서 [Git
 
 ### 설치
 
-최신 릴리스에서 내 시스템에 맞는 패키지를 받습니다.
+어느 방법이든 같은 앱이 설치되고, GitFolio CLI도 함께 들어 있습니다. 명령줄로 설치하거나,
+[최신 릴리스](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest)의 패키지 파일로 설치합니다.
 
-| 시스템 | 패키지 |
-|---|---|
-| macOS, Apple 실리콘 | [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_arm64.dmg) |
-| macOS, Intel | [GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_x64.dmg) |
-| Windows 10·11 | [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe) |
-| Debian, Ubuntu | [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.deb) |
-| Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) |
+#### macOS
 
-**macOS:** `.dmg`를 열고 GitFolio를 응용 프로그램 폴더로 끌어 놓습니다. Apple Developer ID로 서명되고 Apple의
-공증을 받은 앱이라 다른 앱처럼 바로 열립니다. Homebrew로도 설치할 수 있습니다.
+**명령줄**([Homebrew](https://brew.sh)):
 
 ```sh
 brew install --cask alineteam-inc/tap/gitfolio-app
 ```
 
-**Windows:** 설치 프로그램을 실행합니다. 아직 서명이 없어 SmartScreen이 경고할 수 있습니다. 추가 정보 ›
-실행을 누르세요. 설치 프로그램은 git 훅이 GitFolio CLI를 찾을 수 있도록 GitFolio 폴더를 PATH에 넣습니다.
+**패키지 파일:** [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_arm64.dmg)(Apple 실리콘) 또는
+[GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_x64.dmg)(Intel). 열어서 GitFolio를 응용 프로그램 폴더로 끌어 놓습니다.
 
-**Linux:** GitFolio 저장소를 한 번 등록하면, 그다음부터 패키지 관리자로 설치하고 업데이트합니다.
+Apple Developer ID로 서명되고 Apple의 공증을 받은 앱이라 다른 앱처럼 바로 열립니다.
+
+#### Windows (10, 11)
+
+**명령줄**(PowerShell): 묻는 것 없이 현재 사용자에게 설치합니다. 설치가 끝나면 시작 메뉴에서 GitFolio를 실행하세요.
+
+```powershell
+$f = "$env:TEMP\GitFolio_windows_x64-setup.exe"
+irm https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe -OutFile $f
+Start-Process $f /S -Wait
+```
+
+**패키지 파일:** [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe)를 실행합니다.
+아직 서명이 없어 SmartScreen이 경고할 수 있습니다. 추가 정보 › 실행을 누르세요.
+
+어느 방법이든 설치 프로그램은 git 훅이 GitFolio CLI를 찾을 수 있도록 GitFolio 폴더를 PATH에 넣습니다.
+
+#### Linux (x64, arm64)
+
+**명령줄:** GitFolio 저장소를 한 번 등록하면, 그다음부터 패키지 관리자로 설치하고 업데이트합니다.
 
 Debian, Ubuntu:
 
@@ -137,8 +174,15 @@ printf '[gitfolio]\nname=GitFolio\nbaseurl=https://alineteam-inc.github.io/GitFo
 sudo dnf install git-folio
 ```
 
-내려받은 패키지로 설치해도 됩니다: `sudo apt install ./GitFolio_linux_amd64.deb`, `sudo dnf install ./GitFolio_linux_amd64.rpm`. 트레이 아이콘에는 AppIndicator 지원이 필요합니다
-(GNOME에서는 "AppIndicator and KStatusNotifierItem Support" 확장). 아이콘 메뉴에서 GitFolio 창을 엽니다.
+**패키지 파일:**
+
+| 패키지 | 설치 |
+|---|---|
+| [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.deb) | `sudo apt install ./GitFolio_linux_amd64.deb` |
+| [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) | `sudo dnf install ./GitFolio_linux_amd64.rpm` (openSUSE: `sudo zypper install`) |
+
+트레이 아이콘에는 AppIndicator 지원이 필요합니다(GNOME에서는 "AppIndicator and KStatusNotifierItem Support"
+확장). 아이콘 메뉴에서 GitFolio 창을 엽니다.
 
 **업데이트:** GitFolio는 시작할 때와 하루에 한 번 새 버전을 확인하고, 업데이트할지 묻습니다. 내려받은 파일의
 서명을 확인해 설치하고(Linux에서는 비밀번호를 입력한 뒤) 다시 시작합니다. 설정과 저장소는 그대로 남습니다. 새
@@ -161,9 +205,11 @@ GitFolio를 실행합니다. 처음에는 설정이 저절로 열립니다. 데�
 ### 제거
 
 먼저 GitFolio › 정보 › 제거를 실행합니다. GitFolio가 추가한 git 훅을 지우고(원래 있던 훅은 되돌립니다),
-매일 동기화와 이 컴퓨터의 로그인을 지웁니다. aline.team의 데이터는 그대로 남습니다. macOS에서는 앱도
-함께 지워집니다. Windows에서는 그다음 설정 › 앱 › 설치된 앱에서 GitFolio를 지우고, Linux에서는
-`sudo apt remove git-folio` 또는 `sudo dnf remove git-folio`를 실행하세요.
+매일 동기화와 이 컴퓨터의 로그인을 지웁니다. aline.team의 데이터는 그대로 남습니다. 그다음 앱을 지웁니다.
+
+- macOS: 제거가 앱까지 지웁니다. Homebrew로 설치했다면 이어서 `brew uninstall --cask gitfolio-app`도 실행하세요.
+- Windows: 설정 › 앱 › 설치된 앱 › GitFolio › 제거.
+- Linux: `sudo apt remove git-folio` 또는 `sudo dnf remove git-folio`.
 
 ### 라이선스와 이름
 
