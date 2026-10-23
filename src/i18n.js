@@ -160,6 +160,9 @@ const MESSAGES = {
     "Updating git…": "git을 업데이트하는 중…",
     "Software Update opened: install what it offers, then check again.": "소프트웨어 업데이트를 열었습니다. 제안하는 업데이트를 설치한 뒤 다시 확인하세요.",
     "git is now {v}.": "git이 이제 {v}입니다.",
+    "License": "라이선스",
+    "The names GitFolio and aline.team, their logos and the developer type icons are not part of the license.": "GitFolio와 aline.team 이름과 로고, 개발자 유형 아이콘은 라이선스에 포함되지 않습니다.",
+    "Tech icons from Devicon (MIT).": "기술 아이콘은 Devicon(MIT)에서 가져왔습니다.",
     "The App Store opened: update Xcode there, then check again.": "App Store를 열었습니다. Xcode를 업데이트한 뒤 다시 확인하세요.",
     "Uninstall": "제거",
     "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app.":
@@ -403,6 +406,9 @@ const MESSAGES = {
     "Updating git…": "gitをアップデートしています…",
     "Software Update opened: install what it offers, then check again.": "ソフトウェアアップデートを開きました。表示されたアップデートをインストールしてから、もう一度確認してください。",
     "git is now {v}.": "gitは{v}になりました。",
+    "License": "ライセンス",
+    "The names GitFolio and aline.team, their logos and the developer type icons are not part of the license.": "GitFolio と aline.team の名前とロゴ、開発者タイプのアイコンはライセンスの対象外です。",
+    "Tech icons from Devicon (MIT).": "技術アイコンは Devicon(MIT)のものです。",
     "The App Store opened: update Xcode there, then check again.": "App Storeを開きました。Xcodeをアップデートしてから、もう一度確認してください。",
     "Uninstall": "アンインストール",
     "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app.":

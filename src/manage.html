@@ -524,6 +524,8 @@
         return el("div", "item", el("div", "grow", el("div", "", title), where ? el("div", "dim", where) : "", msg),
           el("div", "item-actions", iconButton(ICONS.search, t("Check for updates"), look), arrow));
       }
+      // A link to a web page, opened in the browser: the window stays on GitFolio.
+      const link = (text, url) => Object.assign(el("a", "", text), { href: url, onclick: (e) => (e.preventDefault(), call("open_url", { url })) });
       // Whether a version is the newest: upToDate as gitfolio says it (none: it could not ask, offline).
       const newest = (upToDate, latest) => upToDate === undefined ? t("The newest version could not be checked.")
         : upToDate ? t("The latest version.") : t("Version {v} is out.", { v: latest });
@@ -605,6 +607,11 @@
           problem ? el("p", "", ...drawError(problem))
             : versionRow("GitFolio CLI", `GitFolio CLI ${version}`, `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`, checkCli),
           !git ? "" : git.found ? versionRow("git", `git ${git.version}`, git.path, checkGit) : el("p", "dim", t("git was not found on this computer.")),
+          el("h2", "", t("License")),
+          el("p", "", "© 2026 Alineteam Inc. · ", link("aline.team", "https://aline.team")),
+          el("p", "dim", link("Apache License 2.0", "https://github.com/Alineteam-Inc/GitFolio-APP/blob/main/LICENSE"), " · ",
+            t("The names GitFolio and aline.team, their logos and the developer type icons are not part of the license.")),
+          el("p", "dim", t("Tech icons from Devicon (MIT).")),
           el("h2", "", t("Uninstall")),
           el("p", "", t(bundled
             ? mac ? "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app."
