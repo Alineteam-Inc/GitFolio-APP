@@ -68,6 +68,8 @@ const ICONS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
   crown: '<path d="M4 18l-1.5-10 5 4L12 5l4.5 7 5-4L20 18z"/>',
   sync: '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7"/><path d="M18 15.5V9a3 3 0 0 0-3-3h-4"/><path d="M13 3.5L10.5 6 13 8.5"/>', // a git pull
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/>',
+  download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
 };
 
 // An icon for a button, named on hover by the page (named): this web view shows no system tooltip. `kind`

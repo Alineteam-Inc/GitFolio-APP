@@ -104,6 +104,35 @@ fn offer_update(app: &AppHandle) {
     }
 }
 
+/// GitFolio's version and the newest release's, none when this one is the newest, as About checks.
+#[tauri::command]
+async fn app_update(app: AppHandle) -> Result<serde_json::Value, String> {
+    let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"version": app.package_info().version.to_string(), "latest": update.map(|u| u.version)}))
+}
+
+/// Updates GitFolio as About asks: the newer release downloaded, its progress in the window as gitfolio's
+/// is (`text`, the words for it), its signature checked, installed, then GitFolio started again. Not by a
+/// development build, which runs from target/.
+#[tauri::command]
+async fn update_app(webview: Webview, text: String) -> Result<(), String> {
+    if cfg!(debug_assertions) {
+        return Err("This development build does not update itself.".into());
+    }
+    let app = webview.app_handle().clone();
+    let Some(update) = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())? else {
+        return Ok(());
+    };
+    let mut done = 0;
+    let shown = |chunk: usize, total: Option<u64>| {
+        done += chunk;
+        let line = serde_json::json!({"progress": {"text": text, "done": done, "total": total.unwrap_or(0)}});
+        let _ = app.emit_to(webview.label(), "progress", line.to_string());
+    };
+    update.download_and_install(shown, || {}).await.map_err(|e| e.to_string())?;
+    app.restart();
+}
+
 /// The tray menu, in gitfolio's language: Linux sends no tray click events, so it is the way to the
 /// windows there.
 fn tray_menu<R: Runtime, M: Manager<R>>(app: &M) -> tauri::Result<Menu<R>> {
@@ -635,7 +664,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, update_cli, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, update_cli, app_update, update_app, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -493,14 +493,85 @@
         await load(false);
       }
 
+      // A line of About's versions: what it is and where, then, checked for a newer one on request (the
+      // magnifier), whether one is out, with the arrow to update when the app can: `check` answers
+      // {text, update}, and `update` the words of how it went.
+      function versionRow(name, title, where, check) {
+        const msg = el("div", ""), arrow = el("span", "");
+        const look = () => act(msg, async () => {
+          progress(t("Checking for a newer {name}…", { name }));
+          try {
+            const { text, update } = await check();
+            msg.replaceChildren(el("p", "dim", ...text));
+            arrow.replaceChildren(update ? iconButton(ICONS.download, t("Update"), () => act(msg, async () => {
+              const done = await update();
+              arrow.replaceChildren();
+              msg.replaceChildren(...done);
+            })) : "");
+          } finally {
+            progress();
+          }
+        });
+        return el("div", "item", el("div", "grow", el("div", "", title), where ? el("div", "dim", where) : "", msg),
+          el("div", "item-actions", iconButton(ICONS.search, t("Check for updates"), look), arrow));
+      }
+      // Whether a version is the newest: upToDate as gitfolio says it (none: it could not ask, offline).
+      const newest = (upToDate, latest) => upToDate === undefined ? t("The newest version could not be checked.")
+        : upToDate ? t("The latest version.") : t("Version {v} is out.", { v: latest });
+
       async function about(main) {
-        let path, bundled, version, problem;
+        let path, bundled, version, git, problem;
         try {
-          ({ path, bundled } = await call("cli_status"));
-          ({ version } = await gitfolio("version").then((v) => ({ version: v.release || v.version })));
+          [{ path, bundled }, { version }, git] = await Promise.all([call("cli_status"),
+            gitfolio("version").then((v) => ({ version: v.release || v.version })), gitfolio("git")]);
         } catch (e) {
           problem = e; // one installed on its own, too old (cliTooOld): the app can still be removed
         }
+        const app = await window.__TAURI__.app.getVersion();
+        // GitFolio updates itself, as when it offers to (lib.rs), its download's progress at the foot; then it starts again.
+        const checkApp = async () => {
+          const { latest } = await call("app_update");
+          return { text: [newest(!latest, latest)], update: latest && (async () => {
+            try {
+              await call("update_app", { text: t("Downloading GitFolio {v}…", { v: latest }) });
+            } finally {
+              progress();
+            }
+            return [];
+          }) };
+        };
+        // A bundled GitFolio CLI comes with the app; one installed on its own is updated as the setup does.
+        const checkCli = async () => {
+          if (bundled) return { text: [t("It comes with GitFolio, and is updated with it.")] };
+          const v = await gitfolio("version", "--latest");
+          return { text: [newest(v.upToDate, v.latest)], update: v.upToDate === false && (async () => {
+            progress(t("Updating the GitFolio CLI installed on this computer… With Homebrew this can take a minute or two."));
+            try {
+              const r = JSON.parse(await call("update_cli"));
+              return [el("p", "", el("span", "ok", "✓ "), t("The GitFolio CLI installed on this computer was updated from {from} to {to}.", r))];
+            } finally {
+              progress();
+            }
+          }) };
+        };
+        // git is updated where it came from, by gitfolio (git update): an older GitFolio CLI has only the words for how.
+        const checkGit = async () => {
+          const g = await gitfolio("git", "--latest");
+          return { text: [newest(g.upToDate, g.latest), g.updateHint ? ` ${g.updateHint}` : ""], update: g.upToDate === false && (async () => {
+            progress(t("Updating git…"));
+            try {
+              const r = await gitfolio("git", "update");
+              if (r.how === "softwareUpdate") return [el("p", "", t("Software Update opened: install what it offers, then check again."))];
+              if (r.how === "manual") return [el("p", "", r.message ?? ""), r.url ? el("div", "row", button(t("Open the download page"), () => call("open_url", { url: r.url }))) : ""];
+              return [el("p", "", el("span", "ok", "✓ "), t("git is now {v}.", { v: (await gitfolio("git")).version }))];
+            } catch (e) {
+              if (e.code !== "usage") throw e;
+              return [el("p", "", g.updateHint ?? "")];
+            } finally {
+              progress();
+            }
+          }) };
+        };
         // The app removes itself on macOS; elsewhere the system does (the installer, the package manager),
         // after GitFolio cleaned up here.
         const mac = navigator.userAgent.includes("Mac");
@@ -519,8 +590,11 @@
         }
         main.replaceChildren(
           el("h1", "", t("About")),
-          problem ? el("p", "", ...drawError(problem)) : el("p", "", `GitFolio CLI ${version}`,
-            el("div", "dim sub", `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`)),
+          el("h2", "", t("Versions")),
+          versionRow("GitFolio", `GitFolio ${app}`, "", checkApp),
+          problem ? el("p", "", ...drawError(problem))
+            : versionRow("GitFolio CLI", `GitFolio CLI ${version}`, `${path} · ${t(bundled ? "bundled with GitFolio" : "installed on its own")}`, checkCli),
+          !git ? "" : git.found ? versionRow("git", `git ${git.version}`, git.path, checkGit) : el("p", "dim", t("git was not found on this computer.")),
           el("h2", "", t("Uninstall")),
           el("p", "", t(bundled
             ? mac ? "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app."
