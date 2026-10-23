@@ -97,3 +97,36 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -m "gitfolio-app ${GITHUB_REF_NAME#v}"
           git push
+
+  # apt and dnf repositories on GitHub Pages (packaging/linux/repo.sh), from this release's Linux packages, their
+  # indexes signed with the LINUX_REPO_GPG_KEY secret's key.
+  linux-repo:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Repositories
+        env:
+          GPG_KEY: ${{ secrets.LINUX_REPO_GPG_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq dpkg-dev apt-utils createrepo-c > /dev/null
+          printf '%s\n' "$GPG_KEY" | gpg --batch --import
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p 'GitFolio_linux_*.deb' -p 'GitFolio_linux_*.rpm' -D packages
+          sh packaging/linux/repo.sh packages site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  pages:
+    needs: linux-repo
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write # deploy, from v* tags (the github-pages environment allows them)
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
