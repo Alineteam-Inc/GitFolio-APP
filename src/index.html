@@ -69,15 +69,17 @@
         let s;
         await fill($("state"), async () => drawState((s = await gitfolio("status"))));
         if (!s?.setUp) return $("stats").replaceChildren(), $("stack").replaceChildren();
-        if (!s.account) $("stats").replaceChildren();
-        else if (!(byItself && s.syncMode === "local")) {
+        // Both at once: the type asks aline.team, the stack is worked out here.
+        const stats = async () => {
+          if (!s.account) return $("stats").replaceChildren();
+          if (byItself && s.syncMode === "local") return;
           let st;
           await fill($("stats"), async () => drawStats((st = await gitfolio("stats", ...(refresh ? ["--refresh"] : [])))));
           // The tray icon: the user's developer type's picture.
           const icon = artPixels(st?.type?.devTypeTitle, 4);
           if (icon) call("set_tray_icon", icon).catch(() => {});
-        }
-        await fill($("stack"), async () => drawStack(await gitfolio("stack")));
+        };
+        await Promise.all([stats(), fill($("stack"), async () => drawStack(await gitfolio("stack")))]);
       }
 
       // The foot: refresh and sync now at its left, what is not sent yet between; settings (the GitFolio window,

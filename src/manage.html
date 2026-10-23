@@ -479,14 +479,14 @@
       async function profile(main) {
         const account = (await gitfolio("status")).account;
         const stats = el("section", ""), stack = el("section", "");
-        const load = async (refresh) => {
-          if (account) await fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))));
-          else stats.replaceChildren(el("p", "", ...drawError({ code: "loginFirst" })));
-          await fill(stack, async () => {
+        const load = (refresh) => Promise.all([ // both at once: the type asks aline.team, the stack is worked out here
+          account ? fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))))
+            : stats.replaceChildren(el("p", "", ...drawError({ code: "loginFirst" }))),
+          fill(stack, async () => {
             const u = await gitfolio("stack");
             return [drawTimeline(u), ...drawStack(u)];
-          });
-        };
+          }),
+        ]);
         main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), iconButton(ICONS.refresh, t("Refresh"), () => load(true))),
           stats, el("h2", "", t("Tech stack")), el("p", "dim", t("From the repositories on this computer.")), stack);
         await load(false);
@@ -535,6 +535,7 @@
       // The first-time setup, as an installer goes: the welcome and the data policy, what GitFolio needs,
       // then as gitfolio init asks it. A step answering null is skipped.
       async function setup(main) {
+        let updated = false, autosync = "on"; // the GitFolio CLI brought up to date once; the sync mode as chosen
         const steps = [
           async (next) => {
             // The policy, or why it could not be read: the welcome goes on, the next step says what to do.
@@ -555,9 +556,8 @@
               if (r.how === "xcodeSelect") return msg.replaceChildren(el("p", "", t("Follow the installer that opened, then check again.")));
               await check(); // winget is done, or git was there already
             };
-            // A gitfolio installed on its own, which git hooks run, is first brought to the newest release, once
-            // here: GitFolio needs one new enough, and a computer should have one version.
-            let updated = false;
+            // A GitFolio CLI installed on its own, which git hooks run, is first brought to the newest release, once
+            // in a setup: GitFolio needs one new enough, and a computer should have one version.
             async function update() {
               updated = true;
               box.replaceChildren(msg);
@@ -607,7 +607,6 @@
           async (next) => {
             // A choice, each with its words beside it as in Sync, then Continue; automatic, as gitfolio starts.
             const msg = el("p", "");
-            let autosync = "on";
             const choice = (value, text, note) => {
               const r = Object.assign(input("radio"), { name: "autosync", checked: value === autosync });
               r.onchange = () => (autosync = value);
@@ -636,7 +635,7 @@
               el("p", "dim", t("The packages your repositories use, read only from the package manager files you allow.")), box, bar];
           },
           async (next) => {
-            if ((await gitfolio("status")).syncMode === "local") return null; // local mode has no daily sync
+            if (autosync === "off") return null; // local mode has no daily sync
             const time = timeInput("09:00"), msg = el("p", "");
             return [el("h1", "", t("A daily sync?")), el("p", "dim", t("Once a day at a set time, it sends pushes the hooks missed.")),
               el("div", "row", time), msg,
