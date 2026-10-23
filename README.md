@@ -7,7 +7,7 @@ The GitFolio app by [Alineteam Inc.](https://aline.team) (macOS, Linux, Windows)
 authored and pushed to [aline.team](https://aline.team) to build your developer profile. Your developer
 type, tech stack and last sync are one click away; setup, login, repositories and settings are in its
 window. It carries its own GitFolio CLI (`gitfolio`), so nothing else needs installing.
-[Latest release](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest) · [한국어](#한국어)
+[Latest release](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest) · [한국어](#한국어)
 
 ## Install
 
@@ -15,11 +15,11 @@ Download the package for your system from the latest release:
 
 | System | Package |
 |---|---|
-| macOS, Apple silicon | [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_macos_arm64.dmg) |
-| macOS, Intel | [GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_macos_x64.dmg) |
-| Windows 10 and 11 | [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_windows_x64-setup.exe) |
-| Debian, Ubuntu | [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_arm64.deb) |
-| Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_arm64.rpm) |
+| macOS, Apple silicon | [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_arm64.dmg) |
+| macOS, Intel | [GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_x64.dmg) |
+| Windows 10 and 11 | [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe) |
+| Debian, Ubuntu | [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.deb) |
+| Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) |
 
 **macOS:** open the `.dmg` and drag GitFolio to Applications. It is signed with Apple's Developer ID and
 notarized by Apple, so it opens like any other app.
@@ -30,7 +30,7 @@ The setup puts GitFolio's folder on your PATH, for the git hooks to find the Git
 **Linux:**
 
 ```sh
-curl -LO https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_amd64.deb
+curl -LO https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb
 sudo apt install ./GitFolio_linux_amd64.deb
 ```
 
@@ -42,7 +42,7 @@ It checks the download's signature, installs it (on Linux, after your password) 
 settings and repositories stay. Installing a newer package over the old one works too.
 
 **Check a download:** every release has `checksums.txt`, and
-`gh attestation verify <package> -R Alineteam-Inc/GitFolio-GUI` proves a package was built from this source.
+`gh attestation verify <package> -R Alineteam-Inc/GitFolio-APP` proves a package was built from this source.
 
 ## Get started
 
@@ -88,11 +88,11 @@ GitFolio 앱은 터미널 없이 메뉴 막대나 시스템 트레이에서 [Git
 
 | 시스템 | 패키지 |
 |---|---|
-| macOS, Apple 실리콘 | [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_macos_arm64.dmg) |
-| macOS, Intel | [GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_macos_x64.dmg) |
-| Windows 10·11 | [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_windows_x64-setup.exe) |
-| Debian, Ubuntu | [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_arm64.deb) |
-| Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_arm64.rpm) |
+| macOS, Apple 실리콘 | [GitFolio_macos_arm64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_arm64.dmg) |
+| macOS, Intel | [GitFolio_macos_x64.dmg](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_macos_x64.dmg) |
+| Windows 10·11 | [GitFolio_windows_x64-setup.exe](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_windows_x64-setup.exe) |
+| Debian, Ubuntu | [GitFolio_linux_amd64.deb](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.deb) |
+| Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) |
 
 **macOS:** `.dmg`를 열고 GitFolio를 응용 프로그램 폴더로 끌어 놓습니다. Apple Developer ID로 서명되고 Apple의
 공증을 받은 앱이라 다른 앱처럼 바로 열립니다.
@@ -103,7 +103,7 @@ GitFolio 앱은 터미널 없이 메뉴 막대나 시스템 트레이에서 [Git
 **Linux:**
 
 ```sh
-curl -LO https://github.com/Alineteam-Inc/GitFolio-GUI/releases/latest/download/GitFolio_linux_amd64.deb
+curl -LO https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.deb
 sudo apt install ./GitFolio_linux_amd64.deb
 ```
 
@@ -115,7 +115,7 @@ sudo apt install ./GitFolio_linux_amd64.deb
 패키지를 기존 것 위에 설치해도 됩니다.
 
 **내려받은 파일 확인:** 릴리스마다 `checksums.txt`가 있고,
-`gh attestation verify <패키지> -R Alineteam-Inc/GitFolio-GUI`로 이 소스에서 빌드된 것인지 확인할 수 있습니다.
+`gh attestation verify <패키지> -R Alineteam-Inc/GitFolio-APP`로 이 소스에서 빌드된 것인지 확인할 수 있습니다.
 
 ### 시작하기
 
