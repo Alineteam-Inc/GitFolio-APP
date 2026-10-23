@@ -28,7 +28,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     secrets: inherit # the updater's signing key
     with:
-      cli-ref: v0.6.3 # the gitfolio CLI release the app ships
+      cli-ref: v0.6.4 # the gitfolio CLI release the app ships
 
   publish:
     needs: build
