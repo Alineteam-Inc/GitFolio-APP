@@ -137,13 +137,30 @@
         return box;
       }
 
+      // The Git author emails removed here, kept by the app: the finder never adds one back by itself. Added
+      // here again, it is no longer one of them.
+      const removedEmails = () => {
+        try {
+          return JSON.parse(localStorage.getItem("removedEmails")) ?? [];
+        } catch {
+          return []; // unreadable: as if none
+        }
+      };
+      function keepRemoved(email, removed) {
+        const list = removedEmails().filter((x) => x !== email.toLowerCase());
+        localStorage.setItem("removedEmails", JSON.stringify(removed ? [...list, email.toLowerCase()] : list));
+      }
+
       // The Git author emails (email --json): add, verify with a code, make primary, remove.
       function emails() {
         const box = el("div", "");
         const draw = () => fill(box, async () => {
           const { emails } = await gitfolio("email");
           const add = input("email", t("another Git author email")), msg = el("p", "");
-          const change = (...args) => act(msg, () => gitfolio("email", ...args), draw);
+          const change = (...args) => act(msg, async () => {
+            await gitfolio("email", ...args);
+            if (args[0] === "rm" || args[0] === "add") keepRemoved(args[1], args[0] === "rm");
+          }, draw);
           return [
             // One line each: the email and what it is, its buttons at the end.
             ...emails.map((e) => el("div", "item",
@@ -193,24 +210,33 @@
           }), button(t("Search these folders"), () => find(true))));
         async function find(useRoots) {
           const args = ["init", "--scan", ...(useRoots ? roots.flatMap((r) => ["--root", r]) : [])];
-          await fill(out, async () => {
-            const s = await gitfolio(...args);
+          // This search's own box: one started after it takes its place, and this one then shows and adds nothing.
+          const box = el("div", "", el("p", "dim", "…")), latest = () => box.parentNode === out;
+          out.replaceChildren(box);
+          msg.replaceChildren();
+          await fill(box, async () => {
+            let s = await gitfolio(...args);
+            if (!latest()) return [];
+            // Whose commits count: the Git author emails kept (Account), and every email git uses in these
+            // repositories not kept yet nor removed in Account, added at once (the user's own settings, never
+            // teammates'), as init takes them by default; the verified ones first, so a first primary is one.
+            // Counted again, unless gitfolio counted by just these already (none kept, none removed).
+            const removed = removedEmails();
+            const more = s.emails.filter((e) => !e.work && !removed.includes(e.email.toLowerCase()))
+              .sort((a, b) => !!b.verified - !!a.verified).map((e) => e.email);
+            // Not added: the repositories still show, counted as before, the error under them.
+            const added = more.length > 0 && (await gitfolio("email", "add", ...more)
+              .then(() => true, (e) => (latest() && msg.replaceChildren(...drawError(e)), false)));
+            if (added && more.length < s.emails.length) s = await gitfolio(...args);
+            else if (added) s.emails.forEach((e) => (e.work = true));
+            if (!latest()) return [];
             roots = s.roots;
             drawFolders();
-            const found = s.emails.map((e) => [e, checkbox(e.work || e.verified)]);
+            const counted = s.emails.filter((e) => e.work).map((e) => e.email);
             // Like init: the ones with the user's commits, not collected yet.
             const repos = s.repositories.filter((r) => r.ownCommits > 0 && !r.registered).map((r) => [r, checkbox(true)]);
-            const useEmails = async () => {
-              const add = found.filter(([e, c]) => c.checked && !e.work).map(([e]) => e.email);
-              if (add.length) await gitfolio("email", "add", ...add);
-              await find(false); // the commits counted again, by the chosen emails
-            };
             return [
-              el("h2", "", t("Emails in these repositories")),
-              el("p", "dim", t("Commits by the ones you choose count as yours.")),
-              bulk(found), el("div", "scroll", ...found.map(([e, c]) => label(c, e.email, el("span", "dim", " · " + [t("{n} repositories", { n: e.repositories }),
-                e.work && t("yours"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).join(" · "))))),
-              el("div", "row", button(t("Add the chosen to Git author emails"), () => act(msg, useEmails))),
+              counted.length ? el("p", "dim", t("Commits by {emails} count as yours: change them in Account.", { emails: counted.join(", ") })) : "",
               el("h2", "", t("Repositories with your commits, not collected yet ({n})", { n: repos.length })),
               bulk(repos), el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${home(r.path)}`)))),
               el("div", "actions", button(t("Skip"), onDone),
@@ -625,18 +651,21 @@
       }
 
       // The first-time setup, as an installer goes: the welcome and the data policy, what GitFolio needs,
-      // then as gitfolio init asks it. A step answering null is skipped.
+      // the login, the repositories, then the end: the first sync, and what was set up. The rest is as init has it when Enter is pressed
+      // (automatic sync, no dependencies, no daily sync), changed later in its section, never asked here.
+      // A step answering null is skipped; one done by itself goes on with skip(), so Back passes it by too.
       async function setup(main) {
-        let updated = false, autosync = "on"; // the GitFolio CLI brought up to date once; the sync mode as chosen
+        let updated = false, syncing; // the GitFolio CLI brought up to date once; the first sync while it runs
         const steps = [
           async (next) => {
             // The policy, or why it could not be read: the welcome goes on, the next step says what to do.
             const text = await gitfolio("init", "--policy").then(({ policy }) => el("p", "pre", policy.trim()), (e) => el("p", "", ...drawError(e)));
             return [el("h1", "", t("Welcome to GitFolio")), el("div", "scroll tall", text), el("div", "actions", button(t("Continue"), next))];
           },
-          // GitFolio's two needs, in the order they are installed: git, then gitfolio for git hooks. The next
-          // thing to do is the page's main button, at its foot, Check again on its left.
-          async (next) => {
+          // GitFolio's two needs, in the order they are installed: git, then gitfolio for git hooks, linked
+          // for them by itself. Both there, the step is skipped; only git, the system's own install, waits for
+          // the user: its button at the page's foot, Check again on its left.
+          async (next, skip) => {
             const box = el("div", ""), bar = el("div", "actions"), msg = el("div", "");
             // gitfolio starts git's own installer (macOS, Windows with winget), or says how (manual).
             const installGit = async () => {
@@ -646,7 +675,7 @@
                   r.url ? el("div", "row", button(t("Open the download page"), () => call("open_url", { url: r.url }))) : "");
               }
               if (r.how === "xcodeSelect") return msg.replaceChildren(el("p", "", t("Follow the installer that opened, then check again.")));
-              await check(); // winget is done, or git was there already
+              await again(); // winget is done, or git was there already
             };
             // A GitFolio CLI installed on its own, which git hooks run, is first brought to the newest release, once
             // in a setup: GitFolio needs one new enough, and a computer should have one version.
@@ -663,102 +692,86 @@
                 progress();
               }
             }
+            // Whether both are there and the update said nothing; if not, what is missing or what it said, drawn.
             async function check() {
               if (!updated) await update();
               else msg.replaceChildren();
               try {
-                // --latest: gitfolio asks for the newest versions (git's own releases; gitfolio's, unless bundled).
-                const git = await gitfolio("git", "--latest"), cli = await call("cli_status"), ver = await gitfolio("version", "--latest");
-                // Whether it is the newest, softly: a system's git follows later and gets its security fixes apart.
-                const fresh = (x) => x.upToDate === undefined ? "" : el("p", "dim",
-                  x.upToDate ? t("The latest version.") : t("Version {v} is out.", { v: x.latest }), x.updateHint ? ` ${x.updateHint}` : "");
-                const need = (n, name, what, ok, todo, about) => el("section", "",
-                  el("h2", "", `${n}. ${name}`), el("p", "", el("span", ok ? "ok" : "error", ok ? "✓ " : "✗ "), what), ok ? about : todo);
+                const git = await gitfolio("git");
+                let cli = await call("cli_status");
+                if (git.found && !cli.installed) {
+                  await call("install_cli");
+                  cli = await call("cli_status");
+                }
+                if (git.found && cli.installed && !msg.textContent) return true;
+                const ver = await gitfolio("version");
+                const need = (n, name, what, ok, todo) => el("section", "",
+                  el("h2", "", `${n}. ${name}`), el("p", "", el("span", ok ? "ok" : "error", ok ? "✓ " : "✗ "), what), ok ? "" : todo);
                 box.replaceChildren(
                   el("p", "", t("GitFolio needs two things on this computer, installed in this order.")),
-                  need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found, el("p", "dim", t("git was not found on this computer.")), fresh(git)),
+                  need(1, git.found ? `git ${git.version}` : "git", t("Reads your commits."), git.found, el("p", "dim", t("git was not found on this computer."))),
                   need(2, `GitFolio CLI ${ver.release || ver.version}`, t(cli.bundled
                     ? "Collects your commits in the background when you push, through git hooks. It comes with GitFolio."
                     : "Collects your commits in the background when you push, through git hooks. The one installed on this computer is used."),
-                  cli.installed, git.found ? "" : el("p", "dim", t("Install git first.")), fresh(ver)),
+                  cli.installed, git.found ? "" : el("p", "dim", t("Install git first."))),
                   msg);
-                bar.replaceChildren(button(t("Check again"), check), !git.found
-                  ? button(t("Install git"), () => act(msg, installGit))
-                  : !cli.installed ? button(t("Install GitFolio CLI"), () => act(msg, () => call("install_cli"), check))
-                  : button(t("Continue"), next));
+                bar.replaceChildren(button(t("Check again"), again), !git.found ? button(t("Install git"), () => act(msg, installGit))
+                  : cli.installed ? button(t("Continue"), skip) : ""); // skip: on the way back, this step says nothing again
               } catch (e) {
                 box.replaceChildren(el("p", "", ...drawError(e)), msg);
-                bar.replaceChildren(button(t("Check again"), check));
+                bar.replaceChildren(button(t("Check again"), again));
               }
+              return false;
             }
-            await check();
-            return [el("h1", "", t("Before you start")), box, bar];
+            const again = async () => (await check()) && skip();
+            return (await check()) ? null : [el("h1", "", t("Before you start")), box, bar];
           },
           async (next) => ((await gitfolio("whoami")).loggedIn ? null : [el("h1", "", t("Log in or sign up")), loginForm(next)]),
           async (next) => [el("h1", "", t("Choose the repositories to collect")), finder(next)],
+          // The end, always: the first sync, by itself as init does (none in local mode or with nothing to send),
+          // its progress at the foot and then what it sent; what was set up without asking, and that each is the
+          // user's to turn on or off. Done once the sync is.
           async (next) => {
-            // A choice, each with its words beside it as in Sync, then Continue; automatic, as gitfolio starts.
-            const msg = el("p", "");
-            const choice = (value, text, note) => {
-              const r = Object.assign(input("radio"), { name: "autosync", checked: value === autosync });
-              r.onchange = () => (autosync = value);
-              return label(r, t(text), el("div", "dim", t(note)));
-            };
-            return [el("h1", "", t("How should commits be sent?")),
-              choice("on", "Automatic", "Sent to aline.team right after each git push."),
-              choice("off", "Local", "Nothing is sent until you sync, or ask for your developer type or stack."),
-              msg,
-              el("div", "actions", button(t("Continue"), () => act(msg, () => gitfolio("config", "autosync", autosync), next)))];
-          },
-          async (next) => {
-            const box = el("div", ""), bar = el("div", "actions", button(t("No"), next));
-            let files;
-            const choose = async () => {
-              await fill(box, async () => {
-                const d = await gitfolio("deps", "on");
-                files = depsFiles(d.repositories);
-                return d.repositories.length ? files.parts
-                  : [el("p", "", t("Dependency detection is on. No repository is collected yet: choose its files in Dependencies once one is."))];
-              });
-              bar.replaceChildren(button(t("Save and continue"), async () => (await files.save()) && next()));
-            };
-            bar.append(button(t("Yes, choose the files"), choose));
-            return [el("h1", "", t("Detect dependencies?")),
-              el("p", "dim", t("The packages your repositories use, read only from the package manager files you allow.")), box, bar];
-          },
-          async (next) => {
-            if (autosync === "off") return null; // local mode has no daily sync
-            const time = timeInput("09:00"), msg = el("p", "");
-            return [el("h1", "", t("A daily sync?")), el("p", "dim", t("Once a day at a set time, it sends pushes the hooks missed.")),
-              el("div", "row", time), msg,
-              el("div", "actions", button(t("No"), next), button(t("Turn on"), () => act(msg, () => gitfolio("schedule", time.hhmm()), next)))];
-          },
-          async (next) => {
-            const s = await gitfolio("status");
-            if (s.syncMode === "local") return null;
+            const [s, cfg] = await Promise.all([gitfolio("status"), gitfolio("config")]);
             const result = el("div", ""), bar = el("div", "actions");
-            const sync = async () => {
-              await fill(result, async () => drawSync(await gitfolio("sync")));
-              bar.replaceChildren(button(t("Done"), next));
-            };
-            bar.append(button(t("Later"), next), button(t("Sync now"), sync));
-            return [el("h1", "", t("Send what was collected")), el("p", "dim", t("{n} commits are not sent yet.", { n: s.unsent })), result, bar];
+            const done = () => bar.append(button(t("Done"), next));
+            if (s.syncMode === "local" || !s.unsent) done();
+            else {
+              const run = (syncing ??= gitfolio("sync").finally(() => (syncing = null))); // one at a time: back here, the same one
+              result.append(el("p", "dim", "…"));
+              fill(result, async () => drawSync(await run)).then(done);
+            }
+            const settings = [
+              ["Sync", cfg.autoSyncOff ? t("Local") : `${t("Automatic")} · ${t("Sent to aline.team right after each git push.")}`],
+              ["Dependencies", t(cfg.deps ? "on" : "off")],
+              ["Daily sync", cfg.schedule ? t("Every day at {time}, for pushes the hooks missed.", { time: cfg.schedule }) : t("off")],
+            ];
+            return [el("h1", "", t("GitFolio is set up")), result,
+              el("h2", "", t("Settings")),
+              el("div", "facts", ...settings.flatMap(([k, v]) => [el("span", "dim", t(k)), el("span", "", v)])),
+              el("p", "dim", t("What your portfolio collects is up to you: turn each of these on or off at any time in Sync and Dependencies.")),
+              bar];
           },
         ];
-        let i = 0;
+        let i = 0, shows = 0;
         const shown = []; // the steps shown before this one, for Back: skipped ones are not gone back to
-        const next = () => (shown.push(i), ++i < steps.length ? show() : go("overview"));
+        const skip = () => (++i < steps.length ? show() : go("overview"));
+        const next = () => (shown.push(i), skip());
         const back = () => ((i = shown.pop()), show());
+        // A step goes on (next, skip) and is drawn only while it is the one being shown: not after Back, nor
+        // a second time, as when Check again and Install git both finish, nor once another section is open.
         async function show() {
+          const at = ++shows, live = () => at === shows && current === "setup", mine = (f) => () => live() && f();
           try {
-            const parts = await steps[i](next);
-            if (parts === null) return ++i < steps.length ? show() : go("overview");
+            const parts = await steps[i](mine(next), mine(skip));
+            if (!live()) return;
+            if (parts === null) return skip();
             // The foot: Back always at its left, the step's own buttons (its last part when it has them) at its right.
             const own = parts.at(-1)?.className === "actions" ? parts.pop() : el("span", "");
             const foot = el("div", "actions foot", shown.length ? button(t("Back"), back) : el("span", ""), own);
             main.replaceChildren(el("p", "dim", t("Setup · step {i} of {n}", { i: i + 1, n: steps.length })), ...parts, foot);
           } catch (e) {
-            main.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button(t("Try again"), show)));
+            if (live()) main.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button(t("Try again"), show)));
           }
         }
         await show();
