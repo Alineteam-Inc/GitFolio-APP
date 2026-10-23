@@ -98,7 +98,7 @@ Then remove the app:
 
 | System | Remove the app |
 |---|---|
-| macOS | Uninstall removes it too. Installed with Homebrew: then also `brew uninstall --cask gitfolio-app` |
+| macOS | Uninstall removes it too. Installed with Homebrew: then also `brew uninstall --cask alineteam-inc/tap/gitfolio-app` |
 | Windows | Settings › Apps › Installed apps › GitFolio › Uninstall |
 | Debian, Ubuntu | `sudo apt remove git-folio` |
 | Fedora | `sudo dnf remove git-folio` |
@@ -209,7 +209,7 @@ GitFolio를 실행합니다. 처음에는 설정이 저절로 열립니다. 데�
 
 | 시스템 | 앱 지우기 |
 |---|---|
-| macOS | 제거가 앱까지 지웁니다. Homebrew로 설치했다면 이어서 `brew uninstall --cask gitfolio-app` |
+| macOS | 제거가 앱까지 지웁니다. Homebrew로 설치했다면 이어서 `brew uninstall --cask alineteam-inc/tap/gitfolio-app` |
 | Windows | 설정 › 앱 › 설치된 앱 › GitFolio › 제거 |
 | Debian, Ubuntu | `sudo apt remove git-folio` |
 | Fedora | `sudo dnf remove git-folio` |
