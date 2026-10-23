@@ -22,7 +22,11 @@ Download the package for your system from the latest release:
 | Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) |
 
 **macOS:** open the `.dmg` and drag GitFolio to Applications. It is signed with Apple's Developer ID and
-notarized by Apple, so it opens like any other app.
+notarized by Apple, so it opens like any other app. Or, with Homebrew:
+
+```sh
+brew install --cask alineteam-inc/tap/gitfolio-app
+```
 
 **Windows:** run the setup. It is not signed yet, so SmartScreen may warn: choose More info › Run anyway.
 The setup puts GitFolio's folder on your PATH, for the git hooks to find the GitFolio CLI.
@@ -95,7 +99,11 @@ GitFolio 앱은 터미널 없이 메뉴 막대나 시스템 트레이에서 [Git
 | Fedora, openSUSE | [GitFolio_linux_amd64.rpm](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_amd64.rpm) · [arm64](https://github.com/Alineteam-Inc/GitFolio-APP/releases/latest/download/GitFolio_linux_arm64.rpm) |
 
 **macOS:** `.dmg`를 열고 GitFolio를 응용 프로그램 폴더로 끌어 놓습니다. Apple Developer ID로 서명되고 Apple의
-공증을 받은 앱이라 다른 앱처럼 바로 열립니다.
+공증을 받은 앱이라 다른 앱처럼 바로 열립니다. Homebrew로도 설치할 수 있습니다.
+
+```sh
+brew install --cask alineteam-inc/tap/gitfolio-app
+```
 
 **Windows:** 설치 프로그램을 실행합니다. 아직 서명이 없어 SmartScreen이 경고할 수 있습니다. 추가 정보 ›
 실행을 누르세요. 설치 프로그램은 git 훅이 GitFolio CLI를 찾을 수 있도록 GitFolio 폴더를 PATH에 넣습니다.
