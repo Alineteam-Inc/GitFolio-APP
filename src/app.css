@@ -102,3 +102,14 @@ p > button { margin-left: 8px; } /* the button that solves an error, after its w
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { padding: 2px 8px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
 .chip.hidden { opacity: 0.5; }
+
+/* A long run's progress, at the window's bottom left: bar, percent (4ch, room for 100%), then its words. */
+.progress { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; align-items: center; gap: 8px;
+  height: 28px; padding: 0 12px; box-sizing: border-box; font-size: 11px; background: Canvas; border-top: 1px solid rgb(127 127 127 / 0.25); }
+.glass .progress { background: transparent; }
+.progress-bar { flex: 0 0 120px; height: 6px; border-radius: 3px; background: rgb(127 127 127 / 0.2); overflow: hidden; }
+.progress-bar i { display: block; height: 100%; border-radius: 3px; background: #0a84ff; transition: width 0.2s; }
+.progress-bar.busy i { width: 30%; animation: busy 1.2s ease-in-out infinite alternate; }
+@keyframes busy { from { margin-left: 0; } to { margin-left: 70%; } }
+.progress-pct { flex: 0 0 4ch; text-align: right; font-variant-numeric: tabular-nums; }
+.progress-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

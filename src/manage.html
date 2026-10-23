@@ -57,13 +57,13 @@
       main > .scroll.tall { flex: 1 1 0; max-height: none; min-height: 140px; } /* a page's main box takes the room left, down to its foot */
       body.setup { grid-template-columns: 1fr; }
       body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
-      #progress { position: fixed; right: 16px; top: 12px; padding: 6px 12px; border-radius: 999px; background: rgb(127 127 127 / 0.18); }
+      body:has(> .progress:not([hidden])) { padding-bottom: 28px; } /* the page above the progress, never under it */
     </style>
   </head>
   <body>
     <nav id="nav"></nav>
     <main id="main"></main>
-    <div id="progress" class="row dim" hidden></div>
+    <div id="progress" class="progress" hidden></div>
     <script src="i18n.js"></script>
     <script src="app.js"></script>
     <script>
@@ -220,15 +220,14 @@
         async function add(list) {
           const failures = [];
           for (const [i, r] of list.entries()) {
-            msg.className = "dim";
-            msg.replaceChildren(t("Collecting {name} ({i} of {n})…", { name: r.name, i: i + 1, n: list.length }), el("br", ""), t("A large one takes a while."));
+            progress(t("Collecting {name} ({i} of {n})…", { name: r.name, i: i + 1, n: list.length }), i, list.length);
             try {
               await gitfolio("add", r.path);
             } catch (e) {
               failures.push({ name: r.name, error: e.message });
             }
           }
-          msg.className = "";
+          progress();
           msg.replaceChildren(drawFailures(failures));
           if (!failures.length) await onDone();
         }
@@ -247,15 +246,18 @@
         async function save() {
           msg.replaceChildren();
           const failures = [];
-          for (const r of repos) {
+          // One after the other (they write the same files), each collected again: say which, as it takes a while.
+          const changed = repos.filter((r) => items.some(([x, f, c]) => x === r && (f.state === "new" || c.checked !== (f.state === "allowed"))));
+          for (const [i, r] of changed.entries()) {
             const mine = items.filter(([x]) => x === r);
-            if (!mine.some(([, f, c]) => f.state === "new" || c.checked !== (f.state === "allowed"))) continue;
+            progress(t("Reading the package manager files: {i} of {n} · {name}", { i: i + 1, n: changed.length, name: r.name }), i, changed.length);
             try {
               await gitfolio("deps", "review", r.path, ...mine.flatMap(([, f, c]) => (c.checked ? ["--allow", f.path] : [])));
             } catch (e) {
               failures.push({ name: r.name, error: e.message });
             }
           }
+          progress();
           msg.replaceChildren(failures.length ? drawFailures(failures) : t("Saved."));
           return !failures.length;
         }
@@ -559,12 +561,14 @@
             async function update() {
               updated = true;
               box.replaceChildren(msg);
-              msg.replaceChildren(el("p", "dim", t("Updating the GitFolio CLI installed on this computer…")));
+              progress(t("Updating the GitFolio CLI installed on this computer… With Homebrew this can take a minute or two."));
               try {
                 const r = JSON.parse(await call("update_cli"));
                 msg.replaceChildren(r?.updated ? el("p", "", el("span", "ok", "✓ "), t("The GitFolio CLI installed on this computer was updated from {from} to {to}.", r)) : "");
               } catch (e) {
                 msg.replaceChildren(el("p", "", ...drawError(e)));
+              } finally {
+                progress();
               }
             }
             async function check() {

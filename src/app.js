@@ -97,22 +97,40 @@ async function call(cmd, args) {
   }
 }
 
-// Runs gitfolio with --json (lib.rs): its JSON. Its progress shows in #progress meanwhile.
+// A long run's progress at the window's bottom left (#progress, last in the page): its bar, the percent in a
+// box as wide as "100%" so the words after it never move, then what is being done. Without a count the bar
+// runs back and forth and no percent shows.
+function showProgress(text, done, total) {
+  const p = $("progress");
+  if (!p) return;
+  const n = total > 0 ? Math.round((done / total) * 100) : null;
+  const fill = el("i", "");
+  fill.style.width = n == null ? "" : `${n}%`;
+  p.replaceChildren(el("div", n == null ? "progress-bar busy" : "progress-bar", fill), el("span", "progress-pct", n == null ? "" : `${n}%`), el("span", "progress-text", text));
+  p.hidden = false;
+}
+// The page's own long run (several gitfolio runs, or one without a count): progress(words, done, total) as it
+// goes, progress() when it is over; gitfolio's own progress shows meanwhile only when the page has none.
+let held = false;
+function progress(text, done, total) {
+  held = text != null;
+  if (held) showProgress(text, done, total);
+  else if ($("progress")) $("progress").hidden = true;
+}
+
+// Runs gitfolio with --json (lib.rs): its JSON. Its progress shows meanwhile.
 async function gitfolio(...args) {
   try {
     return JSON.parse(await call("gitfolio", { args }));
   } finally {
-    if ($("progress")) $("progress").hidden = true;
+    if (!held && $("progress")) $("progress").hidden = true;
   }
 }
 
 // gitfolio's progress on a long run (sync, scan --all): {"progress": {step, text, done, total}}.
 window.__TAURI__.event.listen("progress", ({ payload }) => {
-  const p = $("progress");
-  if (!p) return;
   const { text, done, total } = JSON.parse(payload).progress;
-  p.hidden = false;
-  p.replaceChildren(el("span", "", text), total ? Object.assign(el("progress", ""), { value: done, max: total }) : "");
+  if (!held) showProgress(text, done, total);
 });
 
 const when = (t) => t.slice(0, 16).replace("T", " "); // RFC3339 in local time → "2026-10-22 09:00"
