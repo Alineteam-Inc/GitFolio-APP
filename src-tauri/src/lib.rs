@@ -508,6 +508,8 @@ fn glass<'a, R: Runtime, M: Manager<R>>(win: WebviewWindowBuilder<'a, R, M>) -> 
 fn open_manage(app: &AppHandle, section: &str) -> tauri::Result<()> {
     let section = if section.chars().all(|c| c.is_ascii_alphanumeric()) { section } else { "overview" };
     if let Some(win) = app.get_webview_window("manage") {
+        #[cfg(target_os = "macos")]
+        app.set_dock_visibility(true)?;
         app.emit_to("manage", "section", section)?;
         win.unminimize()?;
         win.show()?;
@@ -623,9 +625,12 @@ pub fn run() {
             WindowEvent::Focused(false) if window.label() == "main" => {
                 let _ = window.hide();
             }
-            // Out of the Dock again, a menu bar app, once the GitFolio window is closed.
-            #[cfg(target_os = "macos")]
-            WindowEvent::Destroyed if window.label() == "manage" => {
+            // Closing the GitFolio window hides it, as the tray and gitfolio go on (Quit, in the tray, ends the
+            // app): opened again, it is there at once. Out of the Dock again meanwhile, a menu bar app.
+            WindowEvent::CloseRequested { api, .. } if window.label() == "manage" => {
+                api.prevent_close();
+                let _ = window.hide();
+                #[cfg(target_os = "macos")]
                 let _ = window.app_handle().set_dock_visibility(false);
             }
             _ => {}
