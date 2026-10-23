@@ -64,10 +64,36 @@ jobs:
           cat latest.json
       - run: cd dist && sha256sum * > checksums.txt && cat checksums.txt
       # Signed proof that each package was built here from this tag's source; users check it with
-      # gh attestation verify <package> -R Alineteam-Inc/GitFolio-GUI (README).
+      # gh attestation verify <package> -R Alineteam-Inc/GitFolio-APP (README).
       - uses: actions/attest@v4
         with:
           subject-checksums: dist/checksums.txt
       - run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "GitFolio $GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
+
+  # brew install --cask alineteam-inc/tap/gitfolio-app: the cask (packaging/homebrew) with this release's
+  # version and checksums, pushed with a deploy key that can write to Alineteam-Inc/homebrew-tap only.
+  homebrew:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Cask in Alineteam-Inc/homebrew-tap
+        env:
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -n "$DEPLOY_KEY" ] || { echo "::warning::no HOMEBREW_TAP_DEPLOY_KEY secret: the cask is not updated"; exit 0; }
+          gh release download "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" -p checksums.txt
+          sum() { awk -v f="$1" '$2 == f {print $1}' checksums.txt; }
+          mkdir -p ~/.ssh && printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/tap && chmod 600 ~/.ssh/tap
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/tap -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone --depth 1 git@github.com:Alineteam-Inc/homebrew-tap.git tap
+          sed -e "s/\"VERSION\"/\"${GITHUB_REF_NAME#v}\"/" -e "s/SHA256_ARM64/$(sum GitFolio_macos_arm64.dmg)/" \
+            -e "s/SHA256_X64/$(sum GitFolio_macos_x64.dmg)/" packaging/homebrew/gitfolio-app.rb > tap/Casks/gitfolio-app.rb
+          cd tap
+          git add Casks/gitfolio-app.rb
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "gitfolio-app ${GITHUB_REF_NAME#v}"
+          git push
