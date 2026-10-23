@@ -570,8 +570,10 @@
             progress(t("Updating git…"));
             try {
               const r = await gitfolio("git", "update");
-              if (r.how === "softwareUpdate") return [el("p", "", t("Software Update opened: install what it offers, then check again."))];
-              if (r.how === "manual") return [el("p", "", r.message ?? ""), r.url ? el("div", "row", button(t("Open the download page"), () => call("open_url", { url: r.url }))) : ""];
+              // Apple's git: macOS's own updates opened, where the user goes on; none to run (manual), or nothing newer (winget): its words.
+              const opened = { softwareUpdate: "Software Update opened: install what it offers, then check again.", appStore: "The App Store opened: update Xcode there, then check again." }[r.how];
+              if (opened) return [el("p", "", t(opened))];
+              if (!r.started) return [el("p", "", r.message ?? ""), r.url ? el("div", "row", button(t("Open the download page"), () => call("open_url", { url: r.url }))) : ""];
               return [el("p", "", el("span", "ok", "✓ "), t("git is now {v}.", { v: (await gitfolio("git")).version }))];
             } catch (e) {
               if (e.code !== "usage") throw e;

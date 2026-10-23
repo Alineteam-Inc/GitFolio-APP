@@ -159,6 +159,7 @@ const MESSAGES = {
     "Updating git…": "git을 업데이트하는 중…",
     "Software Update opened: install what it offers, then check again.": "소프트웨어 업데이트를 열었습니다. 제안하는 업데이트를 설치한 뒤 다시 확인하세요.",
     "git is now {v}.": "git이 이제 {v}입니다.",
+    "The App Store opened: update Xcode there, then check again.": "App Store를 열었습니다. Xcode를 업데이트한 뒤 다시 확인하세요.",
     "Uninstall": "제거",
     "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app.":
       "GitFolio가 추가한 git 훅을 지우고(원래 있던 훅은 되돌립니다), 매일 동기화와 이 기기의 로그인을 지운 뒤 앱을 삭제합니다.",
@@ -399,6 +400,7 @@ const MESSAGES = {
     "Updating git…": "gitをアップデートしています…",
     "Software Update opened: install what it offers, then check again.": "ソフトウェアアップデートを開きました。表示されたアップデートをインストールしてから、もう一度確認してください。",
     "git is now {v}.": "gitは{v}になりました。",
+    "The App Store opened: update Xcode there, then check again.": "App Storeを開きました。Xcodeをアップデートしてから、もう一度確認してください。",
     "Uninstall": "アンインストール",
     "Removes the git hooks GitFolio added (putting back the ones that were there before), its daily sync and this device's sign-in, then the app.":
       "GitFolioが追加したgitフックを削除し(元のフックは戻します)、毎日の同期とこのデバイスのログインを削除してから、アプリを削除します。",
