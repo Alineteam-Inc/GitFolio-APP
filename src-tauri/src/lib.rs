@@ -271,6 +271,11 @@ async fn gitfolio(webview: Webview, args: Vec<String>) -> Result<String, String>
         if args[0] == "login" && std::env::var_os("GITFOLIO_API_URL").is_none() {
             return Err("This development build has no test server to log in to.".into());
         }
+        // The daily sync is a job in this user's own launchd, which a test HOME does not separate: it would
+        // run the GitFolio CLI in real use on the real data. It may be turned off, never on.
+        if args[0] == "schedule" && args.get(1).is_some_and(|a| a != "off") {
+            return Err("This development build does not turn the daily sync on: it would be a job of this computer's own, run on the real data.".into());
+        }
         if args[0] == "remove" && !args.get(1).is_some_and(|p| in_test_home(Path::new(p))) {
             return Err("This development build removes only repositories in its test folder: the GitFolio CLI in real use relies on the others' hooks.".into());
         }
