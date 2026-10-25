@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "files": ["globals.d.ts", "src/i18n.js", "src/app.js", "src/index.js"]
+}

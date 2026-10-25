@@ -72,6 +72,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Check the pages' scripts # type-checked as they are (tsconfig.json)
+        run: npm run check
 
       - name: Test
         if: matrix.name != 'macos_x64' # built across, not run here

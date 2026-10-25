@@ -316,6 +316,7 @@ function named(tile) {
 // named on hover, wrapping onto more lines as the window's width allows; a name without an icon shows its
 // first letters.
 function drawStack(u) {
+  /** @type {[string, any[]][]} */
   const kinds = ["languages", "frameworks", "libraries"].map((k) => [k,
     [...(u[k] ?? [])].sort((a, b) => (b.careerMonths ?? 0) - (a.careerMonths ?? 0))]);
   if (kinds.every(([, items]) => !items.length)) return [el("p", "dim", t("No tech stack yet."))];

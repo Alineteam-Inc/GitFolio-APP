@@ -4,9 +4,11 @@
   "version": "0.1.6",
   "type": "module",
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "check": "tsc && tsc -p tsconfig.index.json"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "typescript": "^7.0.2"
   }
 }
