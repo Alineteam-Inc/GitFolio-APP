@@ -39,6 +39,10 @@
       @container (max-width: 440px) { table.repos .last { display: none; } }
       .repo-box { padding: 2px 0 6px; }
       .nested { padding-left: 22px; } /* a repository's files, under its own box */
+      /* History: a run a line, opened by a click to its git commands, each wrapping within the box. */
+      details.run { padding: 5px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); overflow-wrap: anywhere; }
+      details.run summary { cursor: pointer; }
+      details.run div { padding-left: 18px; }
       .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; padding: 6px 8px; }
       .facts span { overflow-wrap: anywhere; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */

@@ -132,6 +132,9 @@ const MESSAGES = {
     "Turning it off deletes the record.": "끄면 기록을 지웁니다.",
     "Show recent runs": "최근 실행 보기",
     "Show all runs": "모든 실행 보기",
+    "Open History": "기록 보기",
+    "History": "기록",
+    "Each run of GitFolio that called git, newest first, with the git commands it ran, as git recorded them.": "git을 부른 GitFolio 실행을 최신순으로, 그 실행이 부른 git 명령과 함께 git이 남긴 그대로 보여 줍니다.",
     "Everything collected": "수집한 전체",
     "The commits, dependencies and statistics collected on this computer, as one JSON file.":
       "이 컴퓨터에서 수집한 커밋, 의존성, 통계를 JSON 파일 하나로 내보냅니다.",
@@ -362,6 +365,9 @@ const MESSAGES = {
     "Turning it off deletes the record.": "オフにすると記録を削除します。",
     "Show recent runs": "最近の実行を表示",
     "Show all runs": "すべての実行を表示",
+    "Open History": "履歴を開く",
+    "History": "履歴",
+    "Each run of GitFolio that called git, newest first, with the git commands it ran, as git recorded them.": "gitを呼び出したGitFolioの実行を新しい順に、実行したgitコマンドとともにgitの記録どおりに表示します。",
     "Everything collected": "収集したすべて",
     "The commits, dependencies and statistics collected on this computer, as one JSON file.":
       "このコンピューターで収集したコミット、依存関係、統計を1つのJSONファイルに書き出します。",

@@ -402,11 +402,10 @@ async function dependencies(main) {
 // policy, a document like terms, has a section of its own.
 async function privacy(main) {
   const cfg = await gitfolio("config");
-  const msg = el("p", ""), word = input("text", t("a customer or internal project name")), history = el("div", "");
+  const msg = el("p", ""), word = input("text", t("a customer or internal project name"));
   const config = (...args) => act(msg, () => gitfolio("config", ...args), () => go("privacy"));
   const record = checkbox(!cfg.gitHistoryOff);
   record.onchange = () => config("git-history", record.checked ? "on" : "off");
-  const showHistory = (...all) => fill(history, async () => drawHistory(await gitfolio("history", ...all)));
   const today = () => { const d = new Date(); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, "0")).join("-"); };
   const exported = el("p", "");
   const save = async () => {
@@ -421,8 +420,7 @@ async function privacy(main) {
     el("div", "chips", ...(cfg.mask ?? []).map((w) => el("span", "chip", w, " ", button("×", () => config("mask", "rm", w))))),
     el("h2", "", t("Git commands GitFolio runs")),
     label(record, t("Keep git's own record of them"), el("div", "dim", t("Turning it off deletes the record."))),
-    el("div", "row", button(t("Show recent runs"), () => showHistory()), button(t("Show all runs"), () => showHistory("--all"))),
-    history,
+    el("div", "row", button(t("Open History"), () => go("history"))),
     el("h2", "", t("Everything collected")),
     el("p", "dim", t("The commits, dependencies and statistics collected on this computer, as one JSON file.")),
     el("div", "row", button(t("Export…"), () => act(exported, save))),
@@ -430,12 +428,22 @@ async function privacy(main) {
     msg);
 }
 
-// gitfolio history --json: each run of gitfolio, newest last, and the git commands it ran.
-function drawHistory(h) {
-  if (!h.on) return [el("p", "dim", t("The record is off."))];
-  if (!h.runs.length) return [el("p", "dim", t("No git commands recorded yet."))];
-  return [el("p", "dim", t("The last {n} of {total} runs.", { n: h.runs.length, total: h.total })), ...h.runs.map((r) => el("div", "",
-    el("p", "", `${when(r.at)}  ${r.command}`), ...r.git.map((g) => el("p", "dim", `    ${g.at}  ${g.command}`))))];
+// History: git's own record of what GitFolio ran (gitfolio history --json, kept as Privacy sets it). Each run
+// that called git is a line, newest first, opened to show its git commands; the last 20 runs, or all of them.
+let historyAll = false;
+async function gitHistory(main) {
+  const h = await gitfolio("history", ...(historyAll ? ["--all"] : []));
+  const showAll = (all) => () => ((historyAll = all), go("history"));
+  main.replaceChildren(
+    el("header", "", el("h1", "", t("History")), iconButton(ICONS.refresh, t("Refresh"), () => go("history"))),
+    el("p", "dim", t("Each run of GitFolio that called git, newest first, with the git commands it ran, as git recorded them.")),
+    ...(!h.on ? [el("p", "", t("The record is off."), " ", button(t("Privacy"), () => go("privacy")))]
+      : !h.runs.length ? [el("p", "dim", t("No git commands recorded yet."))]
+      : [el("div", "scroll tall", ...[...h.runs].reverse().map((r) => el("details", "run",
+          el("summary", "", `${when(r.at)}  ${r.command}`, el("span", "dim", `  · git ${r.git.length}`)),
+          ...r.git.map((g) => el("div", "dim", `${g.at}  ${g.command}`))))),
+        el("div", "row", el("span", "dim", t("The last {n} of {total} runs.", { n: h.runs.length, total: h.total })),
+          h.runs.length < h.total ? button(t("Show all runs"), showAll(true)) : historyAll ? button(t("Show recent runs"), showAll(false)) : "")]));
 }
 
 async function policy(main) {
@@ -709,7 +717,7 @@ async function setup(main) {
   await show();
 }
 
-const SECTIONS = { overview, general, account, sync, dependencies, privacy, profile, policy, about };
+const SECTIONS = { overview, general, account, sync, dependencies, privacy, history: gitHistory, profile, policy, about };
 const LABELS = { policy: "Data policy" }; // the menu's words where they are not the section's name
 const goTo = (section) => go(section); // where an error is solved (app.js)
 
