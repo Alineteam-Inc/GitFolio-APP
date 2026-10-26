@@ -37,7 +37,9 @@ function loginForm(onDone) {
   const email = input("email", "you@example.com");
   const msg = el("p", "");
   box.replaceChildren(el("p", "", t("Log in or sign up to aline.team with a code sent by email.")),
-    el("div", "row", email, button(t("Send code"), () => act(msg, send))), msg);
+    el("div", "row", email, button(t("Send code"), () => act(msg, send)),
+      // a code sent already, as by an AI tool through GitFolio, which leaves it to be entered here
+      button(t("I have a code"), () => codeStep({ email: email.value.trim(), accountExists: true }))), msg);
   async function send() {
     try {
       codeStep(await gitfolio("login", "--email", email.value.trim()));
@@ -46,22 +48,30 @@ function loginForm(onDone) {
       await onDone();
     }
   }
-  // An email without an account is signed up only with the user's agreement to aline.team's terms.
-  function codeStep(r) {
-    const code = codeInput(r.codeLength), agree = checkbox(), notify = checkbox(), msg = el("p", "");
+  // An email without an account is signed up only with the user's agreement to aline.team's terms. A code sent
+  // elsewhere is first tried as a login: without an account, gitfolio says so (signupConsent) with the terms, and
+  // the step asks for the agreement, the code kept.
+  function codeStep(r, typed = "") {
+    const code = Object.assign(codeInput(r.codeLength), { value: typed }), agree = checkbox(), notify = checkbox(), msg = el("p", "");
     async function finish() {
       const args = ["login", "--email", r.email, "--code", code.value.trim()];
       if (!r.accountExists) {
         if (!agree.checked) throw { message: t("Agree to the terms above to sign up.") };
         args.push("--signup", ...(notify.checked ? ["--notify"] : []));
       }
-      await gitfolio(...args);
+      try {
+        await gitfolio(...args);
+      } catch (e) {
+        if (e.code !== "signupConsent" || !r.accountExists) throw e;
+        return codeStep({ ...r, accountExists: false, signupNotice: e.signupNotice, notifyQuestion: e.notifyQuestion }, code.value);
+      }
+      await onDone();
     }
     box.replaceChildren(
-      el("p", "", t("Enter the {n}-digit code sent to {email}.", { n: r.codeLength, email: r.email })),
+      el("p", "", r.codeLength ? t("Enter the {n}-digit code sent to {email}.", { n: r.codeLength, email: r.email }) : t("Enter the code sent to {email}.", { email: r.email })),
       ...(r.accountExists ? [] : [el("p", "pre dim", r.signupNotice ?? ""), label(agree, t("I agree, and sign up")),
         r.notifyQuestion ? label(notify, r.notifyQuestion) : ""]),
-      el("div", "row", code, button(t(r.accountExists ? "Log in" : "Sign up"), () => act(msg, finish, onDone)),
+      el("div", "row", code, button(t(r.accountExists ? "Log in" : "Sign up"), () => act(msg, finish)),
         // codeExpired: too old, or wrong too many times; a new one is needed
         button(t("Send a new code"), () => act(msg, async () => codeStep(await gitfolio("login", "--email", r.email))))),
       msg);
@@ -100,18 +110,24 @@ function emails() {
         ...[e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).map((b) => el("span", "badge", b)),
         el("div", "item-actions",
           e.primary ? "" : iconButton(ICONS.crown, t("Make primary"), () => change("primary", e.email), "primary"),
-          e.verified ? "" : iconButton(ICONS.mail, t("Verify…"), () => act(msg, () => verify(e.email)), "verify"),
+          e.verified ? "" : iconButton(ICONS.mail, t("Verify…"), () => verify(e.email), "verify"),
           iconButton(ICONS.close, t("Remove"), () => change("rm", e.email), "remove")))),
       el("div", "row", add, iconButton(ICONS.plus, t("Add"), () => change("add", add.value.trim()))),
       msg,
     ];
   });
-  // email verify sends a code, or, for an email verified already, answers with the emails.
-  async function verify(email) {
-    const r = await gitfolio("email", "verify", email);
-    if (r.emails) return draw();
-    const code = codeInput(r.codeLength), msg = el("p", "");
-    box.replaceChildren(el("p", "", t("Enter the {n}-digit code sent to {email}.", { n: r.codeLength, email })),
+  // The code's field at once, for one sent already (as by an AI tool through GitFolio), and a way to send one:
+  // email verify sends it, or, for an email verified already, answers with the emails.
+  function verify(email) {
+    const code = codeInput(), msg = el("p", ""), sent = el("span", "dim", "");
+    const send = async () => {
+      const r = await gitfolio("email", "verify", email);
+      if (r.emails) return draw();
+      Object.assign(code, { maxLength: r.codeLength, placeholder: "0".repeat(r.codeLength) });
+      sent.textContent = t("Sent to {email}.", { email });
+    };
+    box.replaceChildren(el("p", "", t("Enter the code sent to {email}, or send one first.", { email })),
+      el("div", "row", button(t("Send code"), () => act(msg, send)), sent),
       el("div", "row", code, button(t("Cancel"), draw),
         button(t("Verify"), () => act(msg, () => gitfolio("email", "verify", email, "--code", code.value.trim()), draw))),
       msg);
