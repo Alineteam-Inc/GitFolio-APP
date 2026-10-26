@@ -400,6 +400,47 @@ async function dependencies(main) {
 
 // Privacy: what is collected and kept, as settings, like the system's Privacy & Security. The data
 // policy, a document like terms, has a section of its own.
+// AI tools: what AI coding tools that use GitFolio see of each repository (config ai --json), each choice saved at
+// once and its repository's line drawn again from the answer: the name they know it by, its commit messages and
+// branch names, or nothing at all when it is hidden.
+async function aiTools(main) {
+  const { repositories } = await gitfolio("config", "ai");
+  const msg = el("p", "");
+  const line = (r) => {
+    const box = el("div", "item");
+    const draw = (r) => {
+      const set = (...args) => act(msg, async () => draw((await gitfolio("config", "ai", args[0], r.path, ...args.slice(1))).repositories.find((x) => x.path === r.path)));
+      const choose = (options, value, f) => {
+        const s = el("select", "");
+        for (const [v, words] of options) s.append(Object.assign(el("option", "", t(words)), { value: v, selected: v === value }));
+        return Object.assign(s, { disabled: r.hidden, onchange: () => f(s.value) });
+      };
+      const own = !["real", "anonymous"].includes(r.name);
+      const other = input("text", t("a name for AI tools"), own ? r.name : "");
+      const otherBox = el("span", "row", other, button(t("Save"), () => set("name", other.value.trim())));
+      otherBox.hidden = !own;
+      const name = choose([["real", "Its real name"], ["anonymous", "Anonymous"], ["other", "Another name"]], own ? "other" : r.name,
+        (v) => (v === "other" ? (otherBox.hidden = false) : set("name", v)));
+      const hidden = Object.assign(checkbox(r.hidden), { onchange: () => set(r.hidden ? "show" : "hide") });
+      const branches = Object.assign(checkbox(r.branches === "on"), { disabled: r.hidden, onchange: () => set("branches", r.branches === "on" ? "off" : "on") });
+      box.replaceChildren(
+        el("div", "grow", el("strong", "", r.repository), " ", el("span", "dim", home(r.path))),
+        el("div", "item-actions", label(hidden, t("Hidden from AI tools"))),
+        el("div", "ai-settings" + (r.hidden ? " off" : ""),
+          el("label", "", el("span", "", t("Seen as")), name, otherBox),
+          el("label", "", el("span", "", t("Commit messages")), choose([["off", "None"], ["subjects", "Subjects only"], ["full", "Whole messages"]], r.messages, (v) => set("messages", v))),
+          label(branches, t("Branch names"))));
+    };
+    draw(r);
+    return box;
+  };
+  main.replaceChildren(
+    el("h1", "", t("AI tools")),
+    el("p", "dim", t("What AI coding tools such as Claude Code or Codex see of each repository when you use GitFolio with them. A hidden one they do not see at all.")),
+    msg,
+    repositories.length ? el("div", "scroll tall", ...repositories.map(line)) : el("p", "dim", t("No repository is collected yet.")));
+}
+
 async function privacy(main) {
   const cfg = await gitfolio("config");
   const msg = el("p", ""), word = input("text", t("a customer or internal project name"));
@@ -717,8 +758,8 @@ async function setup(main) {
   await show();
 }
 
-const SECTIONS = { overview, general, account, sync, dependencies, privacy, history: gitHistory, profile, policy, about };
-const LABELS = { policy: "Data policy" }; // the menu's words where they are not the section's name
+const SECTIONS = { overview, general, account, sync, dependencies, privacy, ai: aiTools, history: gitHistory, profile, policy, about };
+const LABELS = { policy: "Data policy", ai: "AI tools" }; // the menu's words where they are not the section's name
 const goTo = (section) => go(section); // where an error is solved (app.js)
 
 let current;

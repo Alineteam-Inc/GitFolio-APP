@@ -43,6 +43,11 @@
       details.run { padding: 5px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); overflow-wrap: anywhere; }
       details.run summary { cursor: pointer; }
       details.run div { padding-left: 18px; }
+      /* AI tools: a repository's choices under its name, in a row that wraps; dimmed while it is hidden. */
+      .ai-settings { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline; }
+      .ai-settings label { margin: 2px 0; align-items: center; }
+      .ai-settings.off { opacity: 0.5; }
+      main .ai-settings .row { margin: 0; } /* another name's field and Save, on the line */
       .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; padding: 6px 8px; }
       .facts span { overflow-wrap: anywhere; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
