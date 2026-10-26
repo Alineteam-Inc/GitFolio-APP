@@ -67,7 +67,7 @@ proves a package was built from this source.
 
 | System | |
 |---|---|
-| macOS | Signed with Apple's Developer ID and notarized by Apple: it opens like any other app. |
+| macOS | macOS 13 (Ventura) or later. Signed with Apple's Developer ID and notarized by Apple: it opens like any other app. |
 | Windows | Not signed yet: SmartScreen may warn about the downloaded setup (choose More info › Run anyway); the PowerShell install does not ask. Either puts GitFolio's folder on your PATH, for the git hooks to find the GitFolio CLI. |
 | Linux | The tray icon needs AppIndicator support (on GNOME, the "AppIndicator and KStatusNotifierItem Support" extension); its menu opens the GitFolio window. |
 
@@ -181,7 +181,7 @@ sudo dnf install git-folio
 
 | 시스템 | |
 |---|---|
-| macOS | Apple Developer ID로 서명되고 Apple의 공증을 받은 앱이라 다른 앱처럼 바로 열립니다. |
+| macOS | macOS 13(Ventura) 이상. Apple Developer ID로 서명되고 Apple의 공증을 받은 앱이라 다른 앱처럼 바로 열립니다. |
 | Windows | 아직 서명이 없어, 내려받은 설치 프로그램에 SmartScreen이 경고할 수 있습니다(추가 정보 › 실행). PowerShell로 설치하면 묻지 않습니다. 어느 쪽이든 git 훅이 GitFolio CLI를 찾을 수 있도록 GitFolio 폴더를 PATH에 넣습니다. |
 | Linux | 트레이 아이콘에는 AppIndicator 지원이 필요합니다(GNOME에서는 "AppIndicator and KStatusNotifierItem Support" 확장). 아이콘 메뉴에서 GitFolio 창을 엽니다. |
 

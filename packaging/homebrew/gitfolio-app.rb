@@ -18,7 +18,7 @@ cask "gitfolio-app" do
   end
 
   auto_updates true
-  depends_on :macos
+  depends_on macos: ">= :ventura"
 
   app "GitFolio.app"
 
@@ -33,7 +33,7 @@ cask "gitfolio-app" do
   ]
 
   caveats <<~EOS
-    Before `brew uninstall --cask gitfolio-app`, open GitFolio › About › Uninstall: it removes the git hooks
+    Before `brew uninstall --cask alineteam-inc/tap/gitfolio-app`, open GitFolio › About › Uninstall: it removes the git hooks
     GitFolio added, its daily sync and this computer's login.
   EOS
 end
