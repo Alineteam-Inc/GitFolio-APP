@@ -100,7 +100,7 @@ function emails() {
         ...[e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).map((b) => el("span", "badge", b)),
         el("div", "item-actions",
           e.primary ? "" : iconButton(ICONS.crown, t("Make primary"), () => change("primary", e.email), "primary"),
-          e.verified ? "" : iconButton(ICONS.check, t("Verify…"), () => act(msg, () => verify(e.email)), "verify"),
+          e.verified ? "" : iconButton(ICONS.mail, t("Verify…"), () => act(msg, () => verify(e.email)), "verify"),
           iconButton(ICONS.close, t("Remove"), () => change("rm", e.email), "remove")))),
       el("div", "row", add, iconButton(ICONS.plus, t("Add"), () => change("add", add.value.trim()))),
       msg,
@@ -305,7 +305,7 @@ async function overview(main) {
         el("td", "last", r.lastCommit || "-"),
         el("td", "icons",
           iconButton(ICONS.info, t("Details"), panel("details", () => fill(box, async () => drawRepo(await gitfolio("status", r.path))))),
-          iconButton(ICONS.refresh, t("Collect again"), panel("collect", () => fill(box, async () => drawScan(await gitfolio("scan", r.path))))),
+          iconButton(ICONS.history, t("Collect again"), panel("collect", () => fill(box, async () => drawScan(await gitfolio("scan", r.path))))),
           iconButton(ICONS.close, t("Remove…"), panel("remove", () => confirmRemove(r, box))))),
       el("tr", "more", Object.assign(el("td", "", box), { colSpan: 6 })));
   }

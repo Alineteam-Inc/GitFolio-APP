@@ -65,9 +65,10 @@ const ICONS = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/>',
   close: '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>',
   plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
-  check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.8 7l8.2 6 8.2-6"/>', // a code sent by email
+  history: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 3.5V8h4.5"/><path d="M12 7.5V12l3 2"/>', // git's history read again
   crown: '<path d="M4 18l-1.5-10 5 4L12 5l4.5 7 5-4L20 18z"/>',
-  sync: '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7"/><path d="M18 15.5V9a3 3 0 0 0-3-3h-4"/><path d="M13 3.5L10.5 6 13 8.5"/>', // a git pull
+  sync: '<circle cx="12" cy="18.5" r="2.5"/><path d="M12 16V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/>', // a git push: commits sent
   search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/>',
   download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
 };
