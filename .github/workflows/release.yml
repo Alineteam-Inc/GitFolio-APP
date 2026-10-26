@@ -98,6 +98,24 @@ jobs:
             commit -m "gitfolio-app ${GITHUB_REF_NAME#v}"
           git push
 
+  # winget (the Windows Package Manager): the new version as a pull request to microsoft/winget-pkgs, made by Komac
+  # (pinned by its checksum) with the WINGET_TOKEN secret, a classic token with public_repo of the account whose
+  # fork of winget-pkgs it goes through.
+  winget:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull request to microsoft/winget-pkgs
+        env:
+          GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          [ -n "$GITHUB_TOKEN" ] || { echo "::warning::no WINGET_TOKEN secret: winget is not updated"; exit 0; }
+          curl -fsSLo komac.tar.gz https://github.com/russellbanks/Komac/releases/download/v2.17.1/komac-2.17.1-x86_64-unknown-linux-gnu.tar.gz
+          echo "e694e79cd451afabf47bead66ed34586fef4814f7b94e4b61a098f419978d5d7  komac.tar.gz" | sha256sum -c -
+          tar xzf komac.tar.gz komac
+          ./komac update Alineteam.GitFolio --version "${GITHUB_REF_NAME#v}" --submit \
+            --urls "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/GitFolio_windows_x64-setup.exe"
+
   # apt and dnf repositories on GitHub Pages (packaging/linux/repo.sh), from this release's Linux packages, their
   # indexes signed with the LINUX_REPO_GPG_KEY secret's key.
   linux-repo:
