@@ -281,11 +281,18 @@ function confirmRemove(r, box) {
   const remove = async () => {
     const done = await gitfolio("remove", r.path, ...(purge.checked ? ["--purge"] : []));
     if (done.hooksError) throw { message: t("{name} is no longer collected, but its earlier hooks could not be put back: {error}", { name: r.name, error: done.hooksError }) };
+    // aline.team keeps them while another repository here sends to the same address: gitfolio deletes them
+    // there only with the last one (one with no remote never sent any).
+    if (purge.checked && r.namespace && !done.serverDeletionQueued) {
+      return box.replaceChildren(el("p", "", t("{name} is no longer collected and its commits are deleted on this computer. aline.team keeps them, as another repository here sends to the same address.", { name: r.name })),
+        el("div", "actions", button(t("Done"), () => go("overview"))));
+    }
+    go("overview");
   };
   box.replaceChildren(
     el("p", "", t("Stop collecting {name} and put back the git hooks it had before?", { name: r.name })),
     label(purge, t("Also delete its collected commits, on this computer and on aline.team")),
-    el("div", "actions", button(t("Cancel"), () => (box.replaceChildren(), delete box.dataset.open)), button(t("Remove"), () => act(msg, remove, () => go("overview")))),
+    el("div", "actions", button(t("Cancel"), () => (box.replaceChildren(), delete box.dataset.open)), button(t("Remove"), () => act(msg, remove))),
     msg);
 }
 
