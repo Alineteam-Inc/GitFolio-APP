@@ -21,7 +21,13 @@ Every way installs the same app, with its own GitFolio CLI.
 brew install --cask alineteam-inc/tap/gitfolio-app
 ```
 
-**Windows**, in PowerShell (for you only, without questions; then start GitFolio from the Start menu):
+**Windows**, with [winget](https://learn.microsoft.com/windows/package-manager/winget/):
+
+```powershell
+winget install Alineteam.GitFolio
+```
+
+or in PowerShell without winget (for you only, without questions; then start GitFolio from the Start menu):
 
 ```powershell
 $f = "$env:TEMP\GitFolio_windows_x64-setup.exe"
@@ -135,7 +141,13 @@ GitFolio 앱은 터미널 없이 메뉴 막대나 시스템 트레이에서 [Git
 brew install --cask alineteam-inc/tap/gitfolio-app
 ```
 
-**Windows**, PowerShell에서(묻는 것 없이 현재 사용자에게 설치합니다. 끝나면 시작 메뉴에서 GitFolio를 실행하세요):
+**Windows**, [winget](https://learn.microsoft.com/windows/package-manager/winget/)으로:
+
+```powershell
+winget install Alineteam.GitFolio
+```
+
+또는 winget 없이 PowerShell에서(묻는 것 없이 현재 사용자에게 설치합니다. 끝나면 시작 메뉴에서 GitFolio를 실행하세요):
 
 ```powershell
 $f = "$env:TEMP\GitFolio_windows_x64-setup.exe"
