@@ -655,9 +655,12 @@ async function setup(main) {
   let updated = false, syncing; // the GitFolio CLI brought up to date once; the first sync while it runs
   const steps = [
     async (next) => {
-      // The policy, or why it could not be read: the welcome goes on, the next step says what to do.
-      const text = await gitfolio("init", "--policy").then(({ policy }) => el("p", "pre", policy.trim()), (e) => el("p", "", ...drawError(e)));
-      return [el("h1", "", t("Welcome to GitFolio")), el("div", "scroll tall", text), el("div", "actions", button(t("Continue"), next))];
+      // The policy and what starting GitFolio does, or why they could not be read: the welcome goes on, the next
+      // step says what to do. Nothing is set up without the user's agreement: declining quits, as init does.
+      const text = await gitfolio("init", "--policy").then(({ policy, setupActions }) => [el("p", "pre", policy.trim()), setupActions ? el("p", "pre", setupActions.trim()) : ""],
+        (e) => [el("p", "", ...drawError(e))]);
+      return [el("h1", "", t("Welcome to GitFolio")), el("div", "scroll tall", ...text),
+        el("div", "actions", button(t("Decline and quit"), () => call("quit")), button(t("Agree and continue"), next))];
     },
     // GitFolio's two needs, in the order they are installed: git, then gitfolio for git hooks, linked
     // for them by itself. Both there, the step is skipped; only git, the system's own install, waits for
@@ -725,6 +728,18 @@ async function setup(main) {
     },
     async (next) => ((await gitfolio("whoami")).loggedIn ? null : [el("h1", "", t("Log in or sign up")), loginForm(next)]),
     async (next) => [el("h1", "", t("Choose the repositories to collect")), finder(next)],
+    // Whether commits go to aline.team by themselves: local mode unless the user chooses automatic, as init asks.
+    async (next) => {
+      let chosen = (await gitfolio("status")).syncMode === "local" ? "off" : "on";
+      const msg = el("p", "");
+      const choice = (value, text, note) => label(Object.assign(input("radio"), { name: "autosync", checked: value === chosen, onchange: () => (chosen = value) }),
+        t(text), el("div", "dim", t(note)));
+      return [el("h1", "", t("How commits are sent")),
+        choice("off", "Local", "Nothing is sent on its own: only when you sync, or look up your developer type or stack."),
+        choice("on", "Automatic", "Your past commits are sent right away, then after every git push."),
+        msg,
+        el("div", "actions", button(t("Continue"), () => act(msg, () => gitfolio("config", "autosync", chosen), next)))];
+    },
     // The end, always: the first sync, by itself as init does (none in local mode or with nothing to send),
     // its progress at the foot and then what it sent; what was set up without asking, and that each is the
     // user's to turn on or off. Done once the sync is.
@@ -742,11 +757,12 @@ async function setup(main) {
         ["Sync", cfg.autoSyncOff ? t("Local") : `${t("Automatic")} · ${t("Sent to aline.team right after each git push.")}`],
         ["Dependencies", t(cfg.deps ? "on" : "off")],
         ["Daily sync", cfg.schedule ? t("Every day at {time}, for pushes the hooks missed.", { time: cfg.schedule }) : t("off")],
+        ["AI tools", t("A repository's name only, unless you show more in AI tools.")],
       ];
       return [el("h1", "", t("GitFolio is set up")), result,
         el("h2", "", t("Settings")),
         el("div", "facts", ...settings.flatMap(([k, v]) => [el("span", "dim", t(k)), el("span", "", v)])),
-        el("p", "dim", t("What your portfolio collects is up to you: turn each of these on or off at any time in Sync and Dependencies.")),
+        el("p", "dim", t("What your portfolio collects is up to you: change each of these at any time in Sync, Dependencies and AI tools.")),
         bar];
     },
   ];
