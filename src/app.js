@@ -150,17 +150,32 @@ const REMEDIES = {
   scheduleLocal: ["Local mode has no daily sync: choose automatic sync first.", "Sync settings", "sync"],
   stackUnavailable: ["aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile."],
   noGit: ["git is needed and was not found on this computer.", "Set up", "setup"],
-  // From lib.rs: an old gitfolio installed on its own is in use.
-  cliTooOld: ["The GitFolio CLI installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own."],
+  // From lib.rs: an old gitfolio installed on its own is in use; the app brings it up to date itself (updateCli).
+  cliTooOld: ["The GitFolio CLI installed on this computer is too old for GitFolio.", "Update GitFolio CLI", "update-cli"],
   // GitFolio called gitfolio wrong: its words are a command's usage, for no user.
   usage: ["Something went wrong in GitFolio. Please try again, or restart it."],
   didYouMeanWord: ["Something went wrong in GitFolio. Please try again, or restart it."], // usage, with a guess at the word meant
 };
 
-// An error in words and, when the app solves it, a button to where: inline, for a line of its own.
+// An error in words and, when the app solves it, a button to where, or that solves it here: inline, for a line
+// of its own; what went wrong then after it.
 function drawError(e) {
   const [words, action, section] = REMEDIES[e.code]?.map((w, i) => (i < 2 ? t(w) : w)) ?? [e.message ?? String(e)];
-  return [el("span", "error", words), action ? button(action, () => goTo(section)) : ""];
+  const after = el("span", "");
+  const f = section === "update-cli" ? () => updateCli().catch((x) => after.replaceChildren(" ", ...drawError(x))) : () => goTo(section);
+  return [el("span", "error", words), action ? button(action, f) : "", after];
+}
+
+// The GitFolio CLI installed on its own, too old, brought to its newest release as the setup does (update_cli),
+// then the page read again with it.
+async function updateCli() {
+  progress(t("Updating the GitFolio CLI installed on this computer… With Homebrew this can take a minute or two."));
+  try {
+    await call("update_cli");
+  } finally {
+    progress();
+  }
+  location.reload();
 }
 
 // Draws into `into` the elements `f` gives, or the error it throws.

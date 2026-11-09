@@ -210,8 +210,8 @@ const MESSAGES = {
     "Done": "완료",
     "Setup · step {i} of {n}": "설정 · {i}/{n}단계",
     "Try again": "다시 시도",
-    "The GitFolio CLI installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.":
-      "이 컴퓨터에 설치된 GitFolio CLI가 GitFolio에 비해 오래되었습니다. 설치한 곳(Homebrew 또는 설치 스크립트)에서 업데이트하거나, 삭제하면 GitFolio에 포함된 것을 씁니다.",
+    "The GitFolio CLI installed on this computer is too old for GitFolio.": "이 컴퓨터에 설치된 GitFolio CLI가 GitFolio에 비해 오래됐습니다.",
+    "Update GitFolio CLI": "GitFolio CLI 업데이트",
     "Something went wrong in GitFolio. Please try again, or restart it.": "GitFolio에 문제가 생겼습니다. 다시 시도하거나 다시 시작해 주세요.",
     "git is needed and was not found on this computer.": "git이 필요하지만 이 컴퓨터에서 찾지 못했습니다.",
     "GitFolio needs two things on this computer, installed in this order.": "GitFolio를 쓰려면 이 컴퓨터에 두 가지가 필요하며, 이 순서로 설치합니다.",
@@ -472,8 +472,8 @@ const MESSAGES = {
     "Done": "完了",
     "Setup · step {i} of {n}": "セットアップ · ステップ{i}/{n}",
     "Try again": "再試行",
-    "The GitFolio CLI installed on this computer is too old for GitFolio. Update it from where it was installed (Homebrew, or the install script), or uninstall it so GitFolio uses its own.":
-      "このコンピューターにインストールされたGitFolio CLIはGitFolioには古すぎます。インストール元(Homebrewまたはインストールスクリプト)で更新するか、アンインストールするとGitFolioに同梱のものを使います。",
+    "The GitFolio CLI installed on this computer is too old for GitFolio.": "このコンピューターにインストールされたGitFolio CLIはGitFolioには古すぎます。",
+    "Update GitFolio CLI": "GitFolio CLIをアップデート",
     "Something went wrong in GitFolio. Please try again, or restart it.": "GitFolioで問題が発生しました。もう一度試すか、再起動してください。",
     "git is needed and was not found on this computer.": "gitが必要ですが、このコンピューターで見つかりませんでした。",
     "GitFolio needs two things on this computer, installed in this order.": "GitFolioには、このコンピューターに次の2つが必要です。この順にインストールします。",
