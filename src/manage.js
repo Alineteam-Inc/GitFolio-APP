@@ -105,13 +105,20 @@ function emails() {
     }, draw);
     return [
       // One line each: the email and what it is, its buttons at the end.
-      ...emails.map((e) => el("div", "item",
-        el("span", "", e.email),
-        ...[e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply"].filter(Boolean).map((b) => el("span", "badge", b)),
-        el("div", "item-actions",
-          e.primary ? "" : iconButton(ICONS.crown, t("Make primary"), () => change("primary", e.email), "primary"),
-          e.verified ? "" : iconButton(ICONS.mail, t("Verify…"), () => verify(e.email), "verify"),
-          iconButton(ICONS.close, t("Remove"), () => change("rm", e.email), "remove")))),
+      ...emails.map((e) => {
+        // How aline.team takes it, as gitfolio says (verifyBy): verified, by a code, by the GitHub or GitLab
+        // account a no-reply email belongs to linked there, or not at all. Before 0.7.0 it said only verified.
+        const by = "verifyBy" in e ? e.verifyBy : e.verified ? null : "code";
+        return el("div", "item",
+          el("span", "", e.email),
+          ...[e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply", by === "none" && t("not taken by aline.team")]
+            .filter(Boolean).map((b) => el("span", "badge", b)),
+          el("div", "item-actions",
+            e.primary ? "" : iconButton(ICONS.crown, t("Make primary"), () => change("primary", e.email), "primary"),
+            by === "code" ? iconButton(ICONS.mail, t("Verify…"), () => verify(e.email), "verify")
+              : SERVICES[by] ? iconButton(ICONS.link, t("Link your {service} account on aline.team", { service: SERVICES[by] }), () => call("open_url", { url: e.verifyUrl }), "verify") : "",
+            iconButton(ICONS.close, t("Remove"), () => change("rm", e.email), "remove")));
+      }),
       el("div", "row", add, iconButton(ICONS.plus, t("Add"), () => change("add", add.value.trim()))),
       msg,
     ];
@@ -302,7 +309,8 @@ async function overview(main) {
   const s = await gitfolio("status");
   if (!s.setUp) return go("setup");
   const local = s.syncMode === "local";
-  const result = el("div", ""), adding = el("div", "");
+  // What waits for an email to be accepted since the last sync, and how (status --json waiting, 0.7.0 on).
+  const result = el("div", ""), adding = el("div", ""), waiting = el("div", "", ...drawWaiting(s.waiting ?? []));
   // The repositories, one line each, in a table that scrolls in its box under its fixed head: the counts'
   // columns as wide as their words (never cut), the name and path taking the rest, cut short (… ) only when
   // the window is narrow, whole on hover; icon buttons; details and removing open under the line.
@@ -334,12 +342,18 @@ async function overview(main) {
   }
   main.replaceChildren(
     el("header", "", el("h1", "", t("Overview")), el("div", "row",
-      iconButton(ICONS.sync, t("Sync now"), () => fill(result, async () => drawSync(await gitfolio("sync")))), iconButton(ICONS.refresh, t("Refresh"), () => go("overview")))),
+      // A sync's waiting ones take the place of the last ones (status), rather than show twice.
+      iconButton(ICONS.sync, t("Sync now"), () => fill(result, async () => {
+        const r = await gitfolio("sync");
+        waiting.replaceChildren(...drawWaiting(r.waiting ?? []));
+        return drawSync({ ...r, waiting: [] });
+      })), iconButton(ICONS.refresh, t("Refresh"), () => go("overview")))),
     el("p", "", `${s.account} · ${t(local ? "local mode" : "automatic")}`),
     el("p", "dim", s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet")),
     s.lastSyncError ? el("p", "error", s.lastSyncError) : "",
     // Local mode sends nothing by itself, so what is not sent only grows there.
     !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
+    waiting,
     result,
     el("header", "repos-head", el("h2", "", t("Repositories ({n})", { n: s.repositories.length })),
       iconButton(ICONS.plus, t("Add repositories…"), () => adding.replaceChildren(finder(() => go("overview"))))),

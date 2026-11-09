@@ -71,6 +71,7 @@ const ICONS = {
   sync: '<circle cx="12" cy="18.5" r="2.5"/><path d="M12 16V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/>', // a git push: commits sent
   search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/>',
   download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+  link: '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>', // an account linked
 };
 
 // An icon for a button, named on hover by the page (named): this web view shows no system tooltip. `kind`
@@ -397,14 +398,21 @@ function drawScan(r) {
   ];
 }
 
-// Repositories aline.team takes only once an email is verified ({namespace, email}): per email, in a box
-// that scrolls when long, with the way to verify it.
+// The services whose accounts, linked on aline.team, make their no-reply emails count (verifyBy).
+const SERVICES = { github: "GitHub", gitlab: "GitLab" };
+
+// Repositories aline.team takes only once an email is accepted ({namespace, email, verifyBy, verifyUrl}): per
+// email, in a box that scrolls when long, with the way to it as gitfolio says: its code (Account), the GitHub or
+// GitLab account it belongs to linked on aline.team (that page in the browser), or none (another email).
 function drawWaiting(waiting) {
   const by = new Map();
-  for (const w of waiting) by.set(w.email, [...(by.get(w.email) ?? []), w.namespace]);
-  return [...by].map(([email, names]) => el("div", "",
-    el("p", "", t("These are sent once {email} is verified:", { email }), button(t("Account"), () => goTo("account"))),
-    el("div", "scroll", el("p", "dim", names.join(", ")))));
+  for (const w of waiting) by.set(w.email, { ...w, names: [...(by.get(w.email)?.names ?? []), w.namespace] });
+  return [...by.values()].map((w) => el("div", "",
+    SERVICES[w.verifyBy] ? el("p", "", t("These are sent once your {service} account is linked on aline.team, for {email}:", { service: SERVICES[w.verifyBy], email: w.email }),
+      button(t("Open aline.team"), () => call("open_url", { url: w.verifyUrl })))
+      : w.verifyBy === "none" ? el("p", "", t("aline.team does not take commits by {email}: these stay unsent. Commit with another email.", { email: w.email }))
+      : el("p", "", t("These are sent once {email} is verified:", { email: w.email }), button(t("Account"), () => goTo("account"))),
+    el("div", "scroll", el("p", "dim", w.names.join(", ")))));
 }
 
 // gitfolio sync --json, in a sentence or a few.
