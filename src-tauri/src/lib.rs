@@ -39,8 +39,9 @@ fn gitfolio_cmd(cli: &Path) -> Command {
     cmd
 }
 
-/// The oldest gitfolio this app works with: the one with --json, version --json and uninstall.
-const MIN_CLI: [u32; 3] = [0, 6, 0];
+/// The oldest gitfolio this app works with: 0.7.0, whose JSON the windows read for what AI tools see (config
+/// ai), what starting GitFolio does (init --policy), codes sent elsewhere and how each email is accepted.
+const MIN_CLI: [u32; 3] = [0, 7, 0];
 
 /// The gitfolio bundled with the app (bundle.externalBin), next to this executable.
 fn bundled() -> Result<PathBuf, String> {
@@ -685,8 +686,8 @@ mod tests {
 
     #[test]
     fn versions() {
-        assert!(["0.6.0", "0.6.1", "0.10.0", "1.0.0", "dev"].iter().all(|v| new_enough(v)));
-        assert!(!["0.5.0", "0.5.9", "0.0.1"].iter().any(|v| new_enough(v)));
+        assert!(["0.7.0", "0.7.1-dev", "0.10.0", "1.0.0", "dev"].iter().all(|v| new_enough(v)));
+        assert!(!["0.6.4", "0.5.9", "0.0.1"].iter().any(|v| new_enough(v)));
     }
 
     #[test]
@@ -718,16 +719,19 @@ mod tests {
         fs::remove_file(&at).unwrap();
 
         // One installed on its own is never linked over or unlinked, and is used when new enough.
-        let mine = fake(&local, r#"{"version":"0.6.2","bundled":false}"#);
+        let mine = fake(&local, r#"{"version":"0.7.0","bundled":false}"#);
         link(&own, &at).unwrap();
         unlink(&own, &at).unwrap();
         assert!(!fs::symlink_metadata(&at).unwrap().file_type().is_symlink());
         assert_eq!(find_cli(&own, &dirs).unwrap(), (mine.clone(), false));
 
         // First found wins, as in the hooks: an old one there must be updated, not passed over.
+        fake(&brew, r#"{"version":"0.6.4","bundled":false}"#);
+        let err = find_cli(&own, &dirs).unwrap_err();
+        assert!(err.contains("is 0.6.4") && err.contains("0.7.0 or newer"), "{err}");
         fake(&brew, "GitFolio 0.5.0");
         let err = find_cli(&own, &dirs).unwrap_err();
-        assert!(err.contains("older than 0.6.0") && err.contains("0.6.0 or newer"), "{err}");
+        assert!(err.contains("older than 0.6.0") && err.contains("0.7.0 or newer"), "{err}");
 
         fs::remove_dir_all(&tmp).unwrap();
     }
