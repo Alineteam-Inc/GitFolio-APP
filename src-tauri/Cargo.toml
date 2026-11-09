@@ -1,6 +1,6 @@
 [package]
 name = "gitfolio-gui"
-version = "0.1.7"
+version = "0.1.8"
 description = "GitFolio tray app"
 license = "Apache-2.0"
 edition = "2024"
