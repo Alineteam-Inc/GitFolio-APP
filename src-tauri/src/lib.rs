@@ -271,9 +271,11 @@ fn allowed(args: &[String]) -> bool {
     match args.first().map(String::as_str) {
         Some("init") => has("--policy") || has("--scan"),
         Some("login") => has("--email"),
+        // the portfolio's text only: a file is written by save_portfolio, where the user picks
+        Some("portfolio") => args.len() == 1,
         Some(c) => [
             "logout", "whoami", "add", "remove", "scan", "sync", "status", "stats", "stack", "export", "deps", "config",
-            "history", "email", "schedule", "version", "git",
+            "history", "email", "schedule", "version", "git", "work",
         ]
         .contains(&c),
         None => false,
@@ -406,6 +408,23 @@ async fn export(app: AppHandle, date: String) -> Result<Option<PathBuf>, String>
     };
     fs::write(&path, run_cli(&cli()?.0, &["export"], None)?).map_err(|e| e.to_string())?;
     Ok(Some(path))
+}
+
+/// Saves the user's portfolio (gitfolio portfolio) where the user picks in the system's own window, as Markdown to
+/// edit or as a PDF: its JSON (path, missing), or none when the user cancels. gitfolio never writes over a file, so
+/// one the window asked to replace is removed first.
+#[tauri::command]
+async fn save_portfolio(webview: Webview, pdf: bool) -> Result<Option<String>, String> {
+    let (ext, kind) = if pdf { ("pdf", "PDF") } else { ("md", "Markdown") };
+    let picked = webview.app_handle().dialog().file().set_file_name(format!("portfolio.{ext}")).add_filter(kind, &[ext]).blocking_save_file();
+    let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
+        return Ok(None);
+    };
+    if path.exists() {
+        fs::remove_file(&path).map_err(|e| e.to_string())?;
+    }
+    let progress = Some((webview.app_handle().clone(), webview.label().to_string()));
+    run_cli(&cli()?.0, &["portfolio", &path.to_string_lossy()], progress).map(Some)
 }
 
 /// Removes GitFolio. With the bundled gitfolio, `gitfolio uninstall` first (its hooks, the daily sync,
@@ -665,7 +684,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, update_cli, app_update, update_app, open_url, pick_folder, export, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, update_cli, app_update, update_app, open_url, pick_folder, export, save_portfolio, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -688,6 +707,14 @@ mod tests {
     fn versions() {
         assert!(["0.7.0", "0.7.1-dev", "0.10.0", "1.0.0", "dev"].iter().all(|v| new_enough(v)));
         assert!(!["0.6.4", "0.5.9", "0.0.1"].iter().any(|v| new_enough(v)));
+    }
+
+    #[test]
+    fn allows_only_what_windows_need() {
+        let args = |s: &str| s.split(' ').map(String::from).collect::<Vec<_>>();
+        assert!(["status", "work", "work --from 2026", "portfolio", "init --policy", "login --email a@b.c"].iter().all(|a| allowed(&args(a))));
+        // no file written where a page says, no hook or MCP run, no update or uninstall behind the app's back
+        assert!(!["portfolio /tmp/x.md", "portfolio --from x.md", "hook pre-push", "mcp", "update", "uninstall", "init", "login"].iter().any(|a| allowed(&args(a))));
     }
 
     #[test]

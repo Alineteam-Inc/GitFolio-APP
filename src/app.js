@@ -149,6 +149,8 @@ const REMEDIES = {
   statsSlow: ["aline.team is still working out your developer type. Refresh in a minute."],
   scheduleLocal: ["Local mode has no daily sync: choose automatic sync first.", "Sync settings", "sync"],
   stackUnavailable: ["aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile."],
+  portfolioNoBrowser: ["A PDF needs Google Chrome or another Chromium browser on this computer: save it as Markdown instead."],
+  portfolioPDFFailed: ["The PDF could not be printed. Try again, or save it as Markdown."],
   noGit: ["git is needed and was not found on this computer.", "Set up", "setup"],
   // From lib.rs: an old gitfolio installed on its own is in use; the app brings it up to date itself (updateCli).
   cliTooOld: ["The GitFolio CLI installed on this computer is too old for GitFolio.", "Update GitFolio CLI", "update-cli"],

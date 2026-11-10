@@ -542,18 +542,62 @@ async function policy(main) {
 // The developer type from aline.team, with an account; the tech stack, worked out on this computer, always.
 async function profile(main) {
   const account = (await gitfolio("status")).account;
-  const stats = el("section", ""), stack = el("section", "");
-  const load = (refresh) => Promise.all([ // both at once: the type asks aline.team, the stack is worked out here
+  const stats = el("section", ""), stack = el("section", ""), ai = el("section", ""), portfolio = el("section", "");
+  const load = (refresh) => Promise.all([ // all at once: the type asks aline.team, the rest is worked out here
     account ? fill(stats, async () => drawStats(await gitfolio("stats", ...(refresh ? ["--refresh"] : []))))
       : stats.replaceChildren(el("p", "", ...drawError({ code: "loginFirst" }))),
     fill(stack, async () => {
       const u = await gitfolio("stack");
       return [drawTimeline(u), ...drawStack(u)];
     }),
+    // A GitFolio CLI before 0.8.0 has no work, nor a portfolio for the app: those parts are left out then.
+    gitfolio("work").then((w) => (ai.replaceChildren(...drawAIWork(w)), portfolio.replaceChildren(...portfolioParts())),
+      (e) => (["usage", "unknownCommand", "didYouMeanWord"].includes(e.code) ? (ai.hidden = portfolio.hidden = true) : ai.replaceChildren(el("p", "", ...drawError(e))))),
   ]);
   main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), iconButton(ICONS.refresh, t("Refresh"), () => load(true))),
-    stats, el("h2", "", t("Tech stack")), el("p", "dim", t("From the repositories on this computer.")), stack);
+    stats, el("h2", "", t("Tech stack")), el("p", "dim", t("From the repositories on this computer.")), stack, ai, portfolio);
   await load(false);
+}
+
+// work --json: how much of the user's work an AI coding tool helped with, in all and by tool, then by repository.
+function drawAIWork({ total, repositories }) {
+  const head = el("h2", "", t("AI in your commits"));
+  if (!total.commits) return [head, el("p", "dim", t("No commits collected yet."))];
+  const agents = Object.entries(total.commitsByAIAgent ?? {}).sort((a, b) => b[1] - a[1]).map(([a, n]) => `${a} ${n.toLocaleString()}`).join(" · ");
+  return [head,
+    el("p", "", t("An AI coding tool helped with {p}% of your {n} commits.", { p: total.withAIPercent, n: total.commits.toLocaleString() })),
+    agents ? el("p", "dim", agents) : "",
+    el("div", "scroll", el("div", "facts", ...repositories.flatMap((r) => [el("span", "", r.repository),
+      el("span", "dim", t("{p}% of {n} commits", { p: r.withAIPercent, n: r.commits.toLocaleString() }))])))];
+}
+
+// The portfolio from the user's git history (gitfolio portfolio): its Markdown to look at, or saved where the user
+// picks (save_portfolio, lib.rs) as Markdown or a PDF; what is not in it yet, said under it.
+function portfolioParts() {
+  const out = el("div", "");
+  const missing = (r) => r.missing?.length ? el("p", "dim", t("Not in it yet: {what}.", { what: r.missing.map((m) => t({ devType: "your developer type", techStack: "your tech stack" }[m] ?? m)).join(", ") })) : "";
+  const run = (f) => act(out, async () => {
+    progress(t("Writing your portfolio…"));
+    try {
+      await f();
+    } finally {
+      progress();
+    }
+  });
+  const preview = () => run(async () => {
+    const r = await gitfolio("portfolio");
+    out.replaceChildren(missing(r), el("div", "scroll tall", el("p", "pre", r.markdown)));
+  });
+  const save = (pdf) => run(async () => {
+    const saved = await call("save_portfolio", { pdf });
+    if (!saved) return; // the user cancelled the save window
+    const r = JSON.parse(saved);
+    out.replaceChildren(el("p", "", t("Saved as {path}", { path: r.path })), missing(r));
+  });
+  return [el("h2", "", t("Portfolio")),
+    el("p", "dim", t("Your developer type, tech stack and repositories, in Markdown to make your own, or as a PDF.")),
+    el("div", "row", button(t("Preview"), preview), button(t("Save as Markdown…"), () => save(false)), button(t("Save as PDF…"), () => save(true))),
+    out];
 }
 
 // A line of About's versions: what it is and where, then, checked for a newer one on request (the
