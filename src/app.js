@@ -68,7 +68,7 @@ const ICONS = {
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.8 7l8.2 6 8.2-6"/>', // a code sent by email
   history: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 3.5V8h4.5"/><path d="M12 7.5V12l3 2"/>', // git's history read again
   crown: '<path d="M4 18l-1.5-10 5 4L12 5l4.5 7 5-4L20 18z"/>',
-  sync: '<circle cx="12" cy="18.5" r="2.5"/><path d="M12 16V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/>', // a git push: commits sent
+  sync: '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/>', // commits sent up; no circle, which read as ♂
   search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/>',
   download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
   link: '<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>', // an account linked
