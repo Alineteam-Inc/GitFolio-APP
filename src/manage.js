@@ -550,9 +550,9 @@ async function profile(main) {
       const u = await gitfolio("stack");
       return [drawTimeline(u), ...drawStack(u)];
     }),
-    // A GitFolio CLI before 0.8.0 has no work, nor a portfolio for the app: those parts are left out then.
+    // A GitFolio CLI before 0.8.0 knows no work command, nor a portfolio for the app: those parts are left out then.
     gitfolio("work").then((w) => (ai.replaceChildren(...drawAIWork(w)), portfolio.replaceChildren(...portfolioParts())),
-      (e) => (["usage", "unknownCommand", "didYouMeanWord"].includes(e.code) ? (ai.hidden = portfolio.hidden = true) : ai.replaceChildren(el("p", "", ...drawError(e))))),
+      (e) => (["unknownCommand", "didYouMeanWord"].includes(e.code) ? (ai.hidden = portfolio.hidden = true) : ai.replaceChildren(el("p", "", ...drawError(e))))),
   ]);
   main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), iconButton(ICONS.refresh, t("Refresh"), () => load(true))),
     stats, el("h2", "", t("Tech stack")), el("p", "dim", t("From the repositories on this computer.")), stack, ai, portfolio);
