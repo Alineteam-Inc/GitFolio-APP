@@ -190,8 +190,18 @@ function finder(onDone) {
       const counted = s.emails.filter((e) => e.work).map((e) => e.email);
       // Like init: the ones with the user's commits, not collected yet.
       const repos = s.repositories.filter((r) => r.ownCommits > 0 && !r.registered).map((r) => [r, checkbox(true)]);
+      // No email to tell the user's commits by (git has no user email here, none kept): asked for here, as the
+      // setup has no menu to Account, then the search again.
+      const own = input("email", "you@example.com");
+      const addOwn = () => act(msg, async () => {
+        await gitfolio("email", "add", own.value.trim());
+        keepRemoved(own.value.trim(), false);
+        await find(useRoots);
+      });
       return [
-        counted.length ? el("p", "dim", t("Commits by {emails} count as yours: change them in Account.", { emails: counted.join(", ") })) : "",
+        counted.length ? el("p", "dim", t("Commits by {emails} count as yours: change them in Account.", { emails: counted.join(", ") }))
+          : s.repositories.length ? el("div", "", el("p", "", t("GitFolio cannot tell which commits are yours: git has no user email on this computer. Add the email you commit with.")),
+            el("div", "row", own, iconButton(ICONS.plus, t("Add"), addOwn))) : "",
         el("h2", "", t("Repositories with your commits, not collected yet ({n})", { n: repos.length })),
         bulk(repos), el("div", "scroll", ...repos.map(([r, c]) => label(c, r.name, el("span", "dim", ` · ${t("{n} commits", { n: r.ownCommits })} · ${t("last {date}", { date: r.lastCommit })} · ${home(r.path)}`)))),
         el("div", "actions", button(t("Skip"), onDone),
