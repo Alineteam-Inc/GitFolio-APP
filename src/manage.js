@@ -153,16 +153,18 @@ function bulk(list, after = () => {}) {
 
 function finder(onDone) {
   // The folders to look in: the ones gitfolio saved or suggests, and the ones picked in the system's
-  // own window (Finder, File Explorer), no path to type.
+  // own window (Finder, File Explorer), no path to type, shown once the first search says which. Searched
+  // again as soon as one is added or removed; with none left, there is nothing to search.
   let roots = [];
   const folders = el("div", ""), out = el("div", ""), msg = el("p", "");
+  const changed = () => (drawFolders(), roots.length ? find(true) : (msg.replaceChildren(), out.replaceChildren(el("div", "actions", button(t("Skip"), onDone)))));
   const drawFolders = () => folders.replaceChildren(
     ...roots.map((r) => el("div", "item", el("span", "", r),
-      el("div", "item-actions", iconButton(ICONS.close, t("Remove"), () => { roots = roots.filter((x) => x !== r); drawFolders(); }, "remove")))),
+      el("div", "item-actions", iconButton(ICONS.close, t("Remove"), () => { roots = roots.filter((x) => x !== r); changed(); }, "remove")))),
     el("div", "row", button(t("Add a folder…"), async () => {
       const picked = await call("pick_folder");
-      if (picked && !roots.includes(picked)) roots.push(picked), drawFolders();
-    }), button(t("Search these folders"), () => find(true))));
+      if (picked && !roots.includes(picked)) roots.push(picked), changed();
+    })));
   async function find(useRoots) {
     const args = ["init", "--scan", ...(useRoots ? roots.flatMap((r) => ["--root", r]) : [])];
     // This search's own box: one started after it takes its place, and this one then shows and adds nothing.
@@ -223,8 +225,7 @@ function finder(onDone) {
     msg.replaceChildren(drawFailures(failures));
     if (!failures.length) await onDone();
   }
-  find(false);
-  drawFolders();
+  find(false).then(drawFolders); // failed too: the folders, to add one and search it
   return el("div", "", el("p", "", t("Folders to look in for repositories:")), folders, out, msg);
 }
 
