@@ -322,6 +322,7 @@ async function overview(main) {
   const local = s.syncMode === "local";
   // What waits for an email to be accepted since the last sync, and how (status --json waiting, 0.7.0 on).
   const result = el("div", ""), adding = el("div", ""), waiting = el("div", "", ...drawWaiting(s.waiting ?? []));
+  const lastError = Object.assign(el("p", "error", s.lastSyncError ?? ""), { hidden: !s.lastSyncError });
   // The repositories, one line each, in a table that scrolls in its box under its fixed head: the counts'
   // columns as wide as their words (never cut), the name and path taking the rest, cut short (… ) only when
   // the window is narrow, whole on hover; icon buttons; details and removing open under the line.
@@ -353,15 +354,16 @@ async function overview(main) {
   }
   main.replaceChildren(
     el("header", "", el("h1", "", t("Overview")), el("div", "row",
-      // A sync's waiting ones take the place of the last ones (status), rather than show twice.
+      // A sync's waiting ones and its outcome take the place of the last ones (status), rather than show twice.
       iconButton(ICONS.sync, t("Sync now"), () => fill(result, async () => {
+        lastError.hidden = true;
         const r = await gitfolio("sync");
         waiting.replaceChildren(...drawWaiting(r.waiting ?? []));
         return drawSync({ ...r, waiting: [] });
       })), iconButton(ICONS.refresh, t("Refresh"), () => go("overview")))),
     el("p", "", `${s.account} · ${t(local ? "local mode" : "automatic")}`),
     el("p", "dim", s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet")),
-    s.lastSyncError ? el("p", "error", s.lastSyncError) : "",
+    lastError,
     // Local mode sends nothing by itself, so what is not sent only grows there.
     !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
     waiting,
@@ -794,7 +796,7 @@ async function setup(main) {
           bar.replaceChildren(button(t("Check again"), again), !git.found ? button(t("Install git"), () => act(msg, installGit))
             : cli.installed ? button(t("Continue"), skip) : ""); // skip: on the way back, this step says nothing again
         } catch (e) {
-          box.replaceChildren(el("p", "", ...drawError(e)), msg);
+          box.replaceChildren(el("p", "", ...drawError(e, msg)));
           bar.replaceChildren(button(t("Check again"), again));
         }
         return false;

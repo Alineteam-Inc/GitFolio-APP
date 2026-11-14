@@ -44,7 +44,7 @@ table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; vertical-align: middle; padding: 4px 8px 4px 0; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
 th { font-weight: normal; opacity: 0.6; }
 .dim { opacity: 0.6; }
-.error { color: #d33; white-space: pre-wrap; }
+.error { color: #d33; white-space: pre-wrap; overflow-wrap: anywhere; } /* a long address in it breaks, not the window */
 .ok { color: #2a2; }
 p > button { margin-left: 8px; } /* the button that solves an error, after its words */
 .pre { white-space: pre-wrap; }

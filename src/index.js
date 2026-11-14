@@ -14,7 +14,7 @@ function drawState(s) {
   if (!s.setUp) return [el("p", "", t(s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits."))];
   return [
     el("div", "state-line", el("span", "", s.account), el("span", "dim", t(local ? "local mode" : "automatic"))),
-    s.lastSyncError ? el("p", "error right", s.lastSyncError) : "",
+    s.lastSyncError ? el("p", "error right", s.lastSyncError) : "", // left out when Sync now's own says it (once)
   ];
 }
 
@@ -37,6 +37,16 @@ async function load(refresh, byItself = false) {
     if (icon) call("set_tray_icon", icon).catch(() => {});
   };
   await Promise.all([stats(), fill($("stack"), async () => drawStack(await gitfolio("stack")))]);
+  once();
+}
+
+// Each error once: the same words again in another part, failing alike (aline.team out of reach, say), are
+// left out, with their button. Sync now's outcome is kept first, as it names the repositories that failed.
+function once() {
+  const seen = new Set();
+  for (const x of ["result", "state", "stats", "stack"].flatMap((id) => [...$(id).querySelectorAll(".error")])) {
+    seen.has(x.textContent) ? x.closest("p")?.remove() : seen.add(x.textContent);
+  }
 }
 
 // The foot: refresh and sync now at its left, what is not sent yet between; settings (the GitFolio window,
@@ -57,6 +67,7 @@ const readied = ready().then(async () => {
     let r;
     await fill($("result"), async () => [drawFailures((r = await gitfolio("sync")).failed ?? [])]);
     await fill($("state"), async () => drawState(await gitfolio("status"))); // the last sync, and what is left
+    once();
     if (r) {
       const left = $("unsent").textContent, done = `✓ ${t(r.commits || r.deleted || r.moved || r.deps ? "Sent!" : "Nothing new to send.")}`;
       Object.assign($("unsent"), { textContent: done, className: "spacer ok" });

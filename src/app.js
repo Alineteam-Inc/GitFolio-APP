@@ -160,11 +160,11 @@ const REMEDIES = {
 };
 
 // An error in words and, when the app solves it, a button to where, or that solves it here: inline, for a line
-// of its own; what went wrong then after it.
-function drawError(e) {
+// of its own; what went wrong then on its own lines under it, in `after` (the setup's, where its own try said it:
+// once, not twice).
+function drawError(e, after = el("div", "")) {
   const [words, action, section] = REMEDIES[e.code]?.map((w, i) => (i < 2 ? t(w) : w)) ?? [e.message ?? String(e)];
-  const after = el("span", "");
-  const f = section === "update-cli" ? () => updateCli().catch((x) => after.replaceChildren(" ", ...drawError(x))) : () => goTo(section);
+  const f = section === "update-cli" ? () => updateCli().catch((x) => after.replaceChildren(...drawError(x))) : () => goTo(section);
   return [el("span", "error", words), action ? button(action, f) : "", after];
 }
 
