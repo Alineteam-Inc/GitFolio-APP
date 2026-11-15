@@ -20,7 +20,6 @@
       main label { margin: 10px 0; }
       main .row { margin: 14px 0; }
       main > .actions { margin-top: auto; padding-top: 20px; }
-      main td .row { margin: 0; }
       /* The repositories: one line each. The counts' columns are as wide as their words and never cut; the name and
          path take the rest (width 100%, max-width 0) and are cut short only when that is too narrow. */
       table.repos th, table.repos td { white-space: nowrap; padding: 7px 8px; border-bottom: 1px solid rgb(127 127 127 / 0.2); }
@@ -51,7 +50,7 @@
       .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; padding: 6px 8px; }
       .facts span { overflow-wrap: anywhere; }
       main .actions .actions { margin: 0; } /* a step's own buttons, in the setup's foot */
-      main > .foot { justify-content: space-between; }
+      main > .foot { justify-content: space-between; } /* Back at the left, a step's buttons at the right */
       header.repos-head { margin: 22px 0 8px; }
       header.repos-head h2 { margin: 0; }
       /* The time picker: steppers for hour and minute, AM/PM as two joined buttons, the chosen one lit. */
@@ -63,10 +62,10 @@
       .ampm button { min-width: 52px; border-radius: 0; }
       .ampm button:first-child { border-radius: 6px 0 0 6px; }
       .ampm button:last-child { border-radius: 0 6px 6px 0; }
-      .ampm button.on { background: #0a84ff; color: #fff; } /* Back at the left, a step's buttons at the right */
+      .ampm button.on { background: #0a84ff; color: #fff; }
       main > .scroll.tall { flex: 1 1 0; max-height: none; min-height: 140px; } /* a page's main box takes the room left, down to its foot */
       body.setup { grid-template-columns: 1fr; }
-      body.setup nav { display: none; } /* buttons in a table's cell, level with its words */
+      body.setup nav { display: none; }
       body:has(> .progress:not([hidden])) { padding-bottom: 28px; } /* the page above the progress, never under it */
     </style>
   </head>

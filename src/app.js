@@ -115,7 +115,7 @@ function showProgress(text, done, total) {
 }
 // The page's own long run (several gitfolio runs, or one without a count): progress(words, done, total) as it
 // goes, progress() when it is over; gitfolio's own progress shows meanwhile only when the page has none.
-let held = false;
+let held = false, running = 0; // the page's own run; gitfolio runs under way
 function progress(text, done, total) {
   held = text != null;
   if (held) showProgress(text, done, total);
@@ -124,10 +124,11 @@ function progress(text, done, total) {
 
 // Runs gitfolio with --json (lib.rs): its JSON. Its progress shows meanwhile.
 async function gitfolio(...args) {
+  running++;
   try {
     return JSON.parse(await call("gitfolio", { args }));
   } finally {
-    if (!held && $("progress")) $("progress").hidden = true;
+    if (!--running && !held && $("progress")) $("progress").hidden = true; // not while another still runs
   }
 }
 
@@ -156,28 +157,28 @@ const REMEDIES = {
   cliTooOld: ["The GitFolio CLI installed on this computer is too old for GitFolio.", "Update GitFolio CLI", "update-cli"],
   // GitFolio called gitfolio wrong: its words are a command's usage, for no user.
   usage: ["Something went wrong in GitFolio. Please try again, or restart it."],
-  didYouMeanWord: ["Something went wrong in GitFolio. Please try again, or restart it."], // usage, with a guess at the word meant
 };
+REMEDIES.didYouMeanWord = REMEDIES.usage; // usage, with a guess at the word meant
 
 // An error in words and, when the app solves it, a button to where, or that solves it here: inline, for a line
 // of its own; what went wrong then on its own lines under it, in `after` (the setup's, where its own try said it:
-// once, not twice).
+// once, not twice). A too old GitFolio CLI is updated, then the page read again with it.
 function drawError(e, after = el("div", "")) {
   const [words, action, section] = REMEDIES[e.code]?.map((w, i) => (i < 2 ? t(w) : w)) ?? [e.message ?? String(e)];
-  const f = section === "update-cli" ? () => updateCli().catch((x) => after.replaceChildren(...drawError(x))) : () => goTo(section);
+  const f = section === "update-cli" ? () => updateCli().then(() => location.reload(), (x) => after.replaceChildren(...drawError(x))) : () => goTo(section);
   return [el("span", "error", words), action ? button(action, f) : "", after];
 }
 
-// The GitFolio CLI installed on its own, too old, brought to its newest release as the setup does (update_cli),
-// then the page read again with it.
+// The GitFolio CLI installed on its own, brought to its newest release (update_cli), its progress shown: what
+// was done, in words, or nothing when it was the newest already or there is none.
 async function updateCli() {
   progress(t("Updating the GitFolio CLI installed on this computer… With Homebrew this can take a minute or two."));
   try {
-    await call("update_cli");
+    const r = JSON.parse(await call("update_cli"));
+    return r?.updated ? [el("p", "", el("span", "ok", "✓ "), t("The GitFolio CLI installed on this computer was updated from {from} to {to}.", r))] : [];
   } finally {
     progress();
   }
-  location.reload();
 }
 
 // Draws into `into` the elements `f` gives, or the error it throws.
@@ -199,24 +200,6 @@ async function act(msg, f, after) {
     return;
   }
   await after?.();
-}
-
-const fmt = (x) => (x == null || x === "" ? "-" : typeof x === "object" ? JSON.stringify(x) : String(x));
-
-// Any JSON as a table: for answers this app does not lay out on its own.
-function drawValue(v) {
-  if (Array.isArray(v)) {
-    if (!v.length) return el("p", "dim", t("None."));
-    if (!v.every((x) => x && typeof x === "object")) return el("p", "", v.map(fmt).join(", "));
-    const keys = [...new Set(v.flatMap(Object.keys))];
-    return el("table", "", el("tr", "", ...keys.map((k) => el("th", "", k))),
-      ...v.map((x) => el("tr", "", ...keys.map((k) => el("td", "", fmt(x[k]))))));
-  }
-  if (v && typeof v === "object") {
-    return el("table", "", ...Object.entries(v).map(([k, x]) =>
-      el("tr", "", el("th", "", k), el("td", "", x && typeof x === "object" ? drawValue(x) : fmt(x)))));
-  }
-  return el("span", "", fmt(v));
 }
 
 // The developer types' pictures as aline.team draws them (as gitfolio's stats.go has them): 11 squares wide,
@@ -334,9 +317,10 @@ function named(tile) {
 // gitfolio stack --json: every one of each kind, the longest used first, as icons (Devicon, in icons/tech)
 // named on hover, wrapping onto more lines as the window's width allows; a name without an icon shows its
 // first letters.
+const KINDS = ["languages", "frameworks", "libraries"];
 function drawStack(u) {
   /** @type {[string, any[]][]} */
-  const kinds = ["languages", "frameworks", "libraries"].map((k) => [k,
+  const kinds = KINDS.map((k) => [k,
     [...(u[k] ?? [])].sort((a, b) => (b.careerMonths ?? 0) - (a.careerMonths ?? 0))]);
   if (kinds.every(([, items]) => !items.length)) return [el("p", "dim", t("No tech stack yet."))];
   return kinds.filter(([, items]) => items.length).flatMap(([k, items]) => [
@@ -368,7 +352,6 @@ function drawFailures(failures) {
 // to the latest end (each year's start a line, named after it). Its kind by colour (with a legend, and each row
 // named, so not by colour alone); its dates, months and projects on hover. Grouped by kind, the earliest first
 // within one. Ones without dates are left out.
-const KINDS = ["languages", "frameworks", "libraries"];
 function drawTimeline(u) {
   const at = (d) => (d ? Number(d.slice(0, 4)) * 12 + Number(d.slice(5, 7)) - 1 : null); // "2023-04-14…" → months
   const rows = KINDS.flatMap((k) => (u[k] ?? []).filter((x) => at(x.startDate) != null)

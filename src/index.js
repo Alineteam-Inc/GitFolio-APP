@@ -10,7 +10,7 @@ function drawState(s) {
   $("sync").hidden = !s.setUp;
   $("last").textContent = !s.setUp ? "" : s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet");
   // Local mode sends nothing by itself, so what is not sent only grows there.
-  $("unsent").textContent = s.setUp && !local && s.unsent ? t("{n} commits not sent yet", { n: s.unsent }) : "";
+  Object.assign($("unsent"), { className: "spacer", textContent: s.setUp && !local && s.unsent ? t("{n} commits not sent yet", { n: s.unsent }) : "" });
   if (!s.setUp) return [el("p", "", t(s.account ? "Choose the repositories to collect." : "Set up GitFolio to collect your commits."))];
   return [
     el("div", "state-line", el("span", "", s.account), el("span", "dim", t(local ? "local mode" : "automatic"))),
@@ -24,8 +24,9 @@ function drawState(s) {
 async function load(refresh, byItself = false) {
   await readied;
   let s;
+  $("result").replaceChildren(); // an earlier sync's outcome: the state read again says how the last one went
   await fill($("state"), async () => drawState((s = await gitfolio("status"))));
-  if (!s?.setUp) return $("stats").replaceChildren(), $("stack").replaceChildren();
+  if (!s?.setUp) return $("stats").replaceChildren(), $("stack").replaceChildren(), once();
   // Both at once: the type asks aline.team, the stack is worked out here.
   const stats = async () => {
     if (!s.account) return $("stats").replaceChildren();
@@ -68,7 +69,7 @@ const readied = ready().then(async () => {
     await fill($("result"), async () => [drawFailures((r = await gitfolio("sync")).failed ?? [])]);
     await fill($("state"), async () => drawState(await gitfolio("status"))); // the last sync, and what is left
     once();
-    if (r) {
+    if (r && !r.failed?.length) { // none failed: no ✓ by failures
       const left = $("unsent").textContent, done = `✓ ${t(r.commits || r.deleted || r.moved || r.deps ? "Sent!" : "Nothing new to send.")}`;
       Object.assign($("unsent"), { textContent: done, className: "spacer ok" });
       setTimeout(() => $("unsent").textContent === done && Object.assign($("unsent"), { textContent: left, className: "spacer" }), 5000);

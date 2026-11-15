@@ -143,14 +143,14 @@ function emails() {
   return box;
 }
 
-// Finds the repositories under the code folders and the emails in them (init --scan), and adds the
-// ones chosen; then onDone.
 // Select all and Deselect all, over a list's [item, checkbox] pairs; then `after`.
 function bulk(list, after = () => {}) {
   const all = (on) => () => (list.forEach(([, c]) => (c.checked = on)), after());
   return el("div", "row", button(t("Select all"), all(true)), button(t("Deselect all"), all(false)));
 }
 
+// Finds the repositories under the code folders and the emails in them (init --scan), and adds the
+// ones chosen; then onDone.
 function finder(onDone) {
   // The folders to look in: the ones gitfolio saved or suggests, and the ones picked in the system's
   // own window (Finder, File Explorer), no path to type, shown once the first search says which. Searched
@@ -234,7 +234,7 @@ function finder(onDone) {
 // reviews the repositories whose choices changed or have new files (a review collects one again), shows
 // the failures together, and says whether all went well.
 function depsFiles(repos) {
-  const items = repos.flatMap((r) => r.files.map((f) => [r, f, checkbox(f.state === "allowed")]));
+  const items = repos.flatMap((r) => r.files.map((f) => [r, f, checkbox(f.state === "allowed"), el("span", "dim", f.state === "new" ? ` · ${t("new")}` : "")]));
   const msg = el("p", "");
   async function save() {
     msg.replaceChildren();
@@ -246,6 +246,8 @@ function depsFiles(repos) {
       progress(t("Reading the package manager files: {i} of {n} · {name}", { i: i + 1, n: changed.length, name: r.name }), i, changed.length);
       try {
         await gitfolio("deps", "review", r.path, ...mine.flatMap(([, f, c]) => (c.checked ? ["--allow", f.path] : [])));
+        // Reviewed: no longer new, and as chosen, so the next Save leaves it be.
+        mine.forEach(([, f, c, mark]) => (mark.textContent = "", (f.state = c.checked ? "allowed" : "denied")));
       } catch (e) {
         failures.push({ name: r.name, error: e.message });
       }
@@ -263,7 +265,7 @@ function depsFiles(repos) {
     mine.forEach(([, , c]) => (c.onchange = show));
     show();
     return { show, part: el("section", "", label(box, el("strong", "", r.name)),
-      el("div", "nested", ...mine.map(([, f, c]) => label(c, f.path, f.state === "new" ? el("span", "dim", ` · ${t("new")}`) : "")))) };
+      el("div", "nested", ...mine.map(([, f, c, mark]) => label(c, f.path, mark)))) };
   });
   return {
     parts: [bulk(items.map(([, , c]) => [null, c]), () => shown.forEach((s) => s.show())),
@@ -294,35 +296,56 @@ function drawRepo(d) {
   return [el("div", "facts", ...facts.flatMap(([k, v]) => [el("span", "dim", t(k)), el("span", "", v)]))];
 }
 
-function confirmRemove(r, box) {
+// Asks before removing a repository, in its panel `box` (closed by `close`): what it draws there.
+function confirmRemove(r, box, close) {
   const purge = checkbox(), msg = el("p", "");
+  // Removed, with something to say: said in the panel, the list read again on Done.
+  const said = (...words) => box.replaceChildren(el("p", "", ...words), el("div", "actions", button(t("Done"), () => go("overview"))));
   const remove = async () => {
     const done = await gitfolio("remove", r.path, ...(purge.checked ? ["--purge"] : []));
-    if (done.hooksError) throw { message: t("{name} is no longer collected, but its earlier hooks could not be put back: {error}", { name: r.name, error: done.hooksError }) };
+    if (done.hooksError) return said(el("span", "error", t("{name} is no longer collected, but its earlier hooks could not be put back: {error}", { name: r.name, error: done.hooksError })));
     // aline.team keeps them while another repository here sends to the same address: gitfolio deletes them
     // there only with the last one (one with no remote never sent any).
     if (purge.checked && r.namespace && !done.serverDeletionQueued) {
-      return box.replaceChildren(el("p", "", t("{name} is no longer collected and its commits are deleted on this computer. aline.team keeps them, as another repository here sends to the same address.", { name: r.name })),
-        el("div", "actions", button(t("Done"), () => go("overview"))));
+      return said(t("{name} is no longer collected and its commits are deleted on this computer. aline.team keeps them, as another repository here sends to the same address.", { name: r.name }));
     }
     go("overview");
   };
-  box.replaceChildren(
+  return [
     el("p", "", t("Stop collecting {name} and put back the git hooks it had before?", { name: r.name })),
     label(purge, t("Also delete its collected commits, on this computer and on aline.team")),
-    el("div", "actions", button(t("Cancel"), () => (box.replaceChildren(), delete box.dataset.open)), button(t("Remove"), () => act(msg, remove))),
-    msg);
+    el("div", "actions", button(t("Cancel"), close), button(t("Remove"), () => act(msg, remove))),
+    msg];
 }
 
 // ---- Sections ----
 
+// A checkbox's setting saved as it is turned (`save` with whether it is on), then `after`; not saved, the box
+// goes back to what is kept, its error in `msg`.
+const saved = (box, msg, save, after) => (box.onchange = () => {
+  const on = box.checked;
+  act(msg, () => save(on).catch((e) => { if (box.checked === on) box.checked = !on; throw e; }), after); // turned again meanwhile: left
+});
+
 async function overview(main) {
   const s = await gitfolio("status");
-  if (!s.setUp) return go("setup");
-  const local = s.syncMode === "local";
-  // What waits for an email to be accepted since the last sync, and how (status --json waiting, 0.7.0 on).
-  const result = el("div", ""), adding = el("div", ""), waiting = el("div", "", ...drawWaiting(s.waiting ?? []));
-  const lastError = Object.assign(el("p", "error", s.lastSyncError ?? ""), { hidden: !s.lastSyncError });
+  if (!s.setUp) return main.open() && go("setup");
+  // The state's own lines, drawn again after Sync now from the state as it is then: the account and the mode, the
+  // last sync and its failure (unless Sync now's own outcome, under them, says it), what is left to send (local
+  // mode sends nothing by itself, so it only grows there), and what waits for an email to be accepted, and how
+  // (status --json waiting, 0.7.0 on). Each repository's Sent too.
+  const state = el("div", ""), result = el("div", ""), adding = el("div", ""), sent = new Map();
+  const sentWords = (r) => (r.namespace === "" ? t("no remote") : r.waiting ? t("waiting") : String(r.sent));
+  const drawState = (s, synced) => {
+    const local = s.syncMode === "local";
+    state.replaceChildren(
+      el("p", "", `${s.account} · ${t(local ? "local mode" : "automatic")}`),
+      el("p", "dim", s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet")),
+      s.lastSyncError && !synced ? el("p", "error", s.lastSyncError) : "",
+      !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
+      ...drawWaiting(s.waiting ?? []));
+    for (const r of s.repositories) if (sent.has(r.path)) sent.get(r.path).textContent = sentWords(r);
+  };
   // The repositories, one line each, in a table that scrolls in its box under its fixed head: the counts'
   // columns as wide as their words (never cut), the name and path taking the rest, cut short (… ) only when
   // the window is narrow, whole on hover; icon buttons; details and removing open under the line.
@@ -332,58 +355,60 @@ async function overview(main) {
     rows));
   for (const r of s.repositories) {
     const box = el("div", "repo-box");
-    // A button opens its panel under the line, and the same button closes it again.
-    const panel = (kind, f) => async () => {
-      if (box.dataset.open === kind) return box.replaceChildren(), delete box.dataset.open;
+    // A button opens its panel under the line, and the same button closes it again. The panel asked for last
+    // shows: a slower answer of one before it is let go.
+    let run = 0;
+    const close = () => (run++, box.replaceChildren(), delete box.dataset.open);
+    const panel = (kind, parts) => async () => {
+      if (box.dataset.open === kind) return close();
       box.dataset.open = kind;
-      await f();
+      const at = ++run, kids = await parts().catch((e) => [el("p", "", ...drawError(e))]);
+      if (at === run) box.replaceChildren(...kids);
     };
     const where = el("td", "where", el("strong", "", r.name), " ", el("span", "dim", home(r.path)));
     where.title = `${r.name} · ${home(r.path)}`;
     rows.append(
       el("tr", "", where,
         el("td", "num", String(r.commits)),
-        el("td", "", r.namespace === "" ? t("no remote") : r.waiting ? t("waiting") : String(r.sent)),
+        sent.set(r.path, el("td", "", sentWords(r))).get(r.path),
         el("td", "hooks", t(r.hooks)),
         el("td", "last", r.lastCommit || "-"),
         el("td", "icons",
-          iconButton(ICONS.info, t("Details"), panel("details", () => fill(box, async () => drawRepo(await gitfolio("status", r.path))))),
-          iconButton(ICONS.history, t("Collect again"), panel("collect", () => fill(box, async () => drawScan(await gitfolio("scan", r.path))))),
-          iconButton(ICONS.close, t("Remove…"), panel("remove", () => confirmRemove(r, box))))),
+          iconButton(ICONS.info, t("Details"), panel("details", async () => drawRepo(await gitfolio("status", r.path)))),
+          iconButton(ICONS.history, t("Collect again"), panel("collect", async () => drawScan(await gitfolio("scan", r.path)))),
+          iconButton(ICONS.close, t("Remove…"), panel("remove", async () => confirmRemove(r, box, close))))),
       el("tr", "more", Object.assign(el("td", "", box), { colSpan: 6 })));
   }
   main.replaceChildren(
     el("header", "", el("h1", "", t("Overview")), el("div", "row",
-      // A sync's waiting ones and its outcome take the place of the last ones (status), rather than show twice.
+      // A sync's outcome under the state's lines, read again after it (not read: the outcome whole, its own
+      // waiting ones too); the repositories' panels and a finder open under them stay as they are.
       iconButton(ICONS.sync, t("Sync now"), () => fill(result, async () => {
-        lastError.hidden = true;
         const r = await gitfolio("sync");
-        waiting.replaceChildren(...drawWaiting(r.waiting ?? []));
-        return drawSync({ ...r, waiting: [] });
+        return gitfolio("status").then((now) => (drawState(now, true), drawSync({ ...r, waiting: [] })), () => drawSync(r));
       })), iconButton(ICONS.refresh, t("Refresh"), () => go("overview")))),
-    el("p", "", `${s.account} · ${t(local ? "local mode" : "automatic")}`),
-    el("p", "dim", s.lastSync ? t("Last sync {time}", { time: when(s.lastSync) }) : t("Not synced yet")),
-    lastError,
-    // Local mode sends nothing by itself, so what is not sent only grows there.
-    !local && s.unsent ? el("p", "", t("{n} commits not sent yet", { n: s.unsent })) : "",
-    waiting,
+    state,
     result,
     el("header", "repos-head", el("h2", "", t("Repositories ({n})", { n: s.repositories.length })),
       iconButton(ICONS.plus, t("Add repositories…"), () => adding.replaceChildren(finder(() => go("overview"))))),
     table,
     adding);
+  drawState(s);
 }
 
 async function general(main) {
   const on = checkbox(await call("autostart")), msg = el("p", "");
-  on.onchange = () => act(msg, () => call("set_autostart", { on: on.checked }));
+  saved(on, msg, (v) => call("set_autostart", { on: v }));
   // The language: the device's to start with; a language's name in itself.
   const lang = el("select", "");
   const chosen = await call("language");
   for (const [value, name] of [["", t("As the device is set")], ["ko", "한국어"], ["en", "English"], ["ja", "日本語"]]) {
     lang.append(Object.assign(el("option", "", name), { value, selected: value === chosen }));
   }
-  lang.onchange = () => act(msg, () => call("set_language", { lang: lang.value }));
+  lang.onchange = () => act(msg, () => call("set_language", { lang: lang.value }).catch(async (e) => {
+    lang.value = (await call("language").catch(() => chosen)) ?? ""; // what is kept now: it may have been set all the same
+    throw e;
+  }));
   main.replaceChildren(el("h1", "", t("General")),
     el("label", "", el("span", "", t("Language")), lang),
     label(on, t("Start GitFolio when the computer starts"), el("div", "dim", t("It waits as an icon in the menu bar or the taskbar."))), msg);
@@ -406,16 +431,22 @@ async function sync(main) {
   const [s, sch] = await Promise.all([gitfolio("status"), gitfolio("schedule")]);
   const local = s.syncMode === "local";
   const msg = el("p", "");
+  const modes = [];
   const mode = (value, text, note) => {
     const r = Object.assign(input("radio"), { name: "mode", checked: (value === "local") === local });
-    r.onchange = () => act(msg, () => gitfolio("config", "autosync", value === "local" ? "off" : "on"), () => go("sync"));
+    modes.push(r);
+    // Not saved: the mode kept is the one chosen again.
+    r.onchange = () => act(msg, () => gitfolio("config", "autosync", value === "local" ? "off" : "on").catch((e) => {
+      modes.forEach((x) => (x.checked = x !== r));
+      throw e;
+    }), () => go("sync"));
     return label(r, t(text), el("div", "dim", t(note)));
   };
   const schedule = (...args) => act(msg, () => gitfolio("schedule", ...args), () => go("sync"));
   const on = Object.assign(checkbox(!!sch.schedule), { className: "switch", ariaLabel: t("Daily sync") });
   let later;
   const time = timeInput(sch.schedule || "09:00", () => on.checked && (clearTimeout(later), (later = setTimeout(() => schedule(time.hhmm()), 800))));
-  on.onchange = () => schedule(on.checked ? time.hhmm() : "off");
+  saved(on, msg, (v) => gitfolio("schedule", v ? time.hhmm() : "off"), () => go("sync"));
   main.replaceChildren(
     el("h1", "", t("Sync")),
     el("h2", "", t("How commits are sent")),
@@ -436,8 +467,8 @@ async function dependencies(main) {
   const msg = el("p", "");
   const set = (...args) => act(msg, () => gitfolio("deps", ...args), () => go("dependencies"));
   const on = checkbox(d.on), auto = checkbox(d.auto);
-  on.onchange = () => set(on.checked ? "on" : "off");
-  auto.onchange = () => set("auto", auto.checked ? "on" : "off");
+  saved(on, msg, (v) => gitfolio("deps", v ? "on" : "off"), () => go("dependencies"));
+  saved(auto, msg, (v) => gitfolio("deps", "auto", v ? "on" : "off"), () => go("dependencies"));
   main.replaceChildren(
     el("h1", "", t("Dependencies")),
     el("p", "dim", t("The packages your repositories use, read only from the package manager files you allow.")),
@@ -448,8 +479,6 @@ async function dependencies(main) {
       el("div", "actions", button(t("Save"), files.save))] : []));
 }
 
-// Privacy: what is collected and kept, as settings, like the system's Privacy & Security. The data
-// policy, a document like terms, has a section of its own.
 // AI tools: what AI coding tools that use GitFolio see of each repository (config ai --json), each choice saved at
 // once and its repository's line drawn again from the answer: the name they know it by, its commit messages and
 // branch names, or nothing at all when it is hidden.
@@ -459,7 +488,10 @@ async function aiTools(main) {
   const line = (r) => {
     const box = el("div", "item");
     const draw = (r) => {
-      const set = (...args) => act(msg, async () => draw((await gitfolio("config", "ai", args[0], r.path, ...args.slice(1))).repositories.find((x) => x.path === r.path)));
+      // Not saved: the line again as it is kept, so no control shows what was not set; a name typed stays, to
+      // save again.
+      const save = async (...args) => draw((await gitfolio("config", "ai", args[0], r.path, ...args.slice(1))).repositories.find((x) => x.path === r.path));
+      const set = (...args) => act(msg, () => save(...args).catch((e) => { draw(r); throw e; }));
       const choose = (options, value, f) => {
         const s = el("select", "");
         for (const [v, words] of options) s.append(Object.assign(el("option", "", t(words)), { value: v, selected: v === value }));
@@ -467,12 +499,12 @@ async function aiTools(main) {
       };
       const own = !["real", "anonymous"].includes(r.name);
       const other = input("text", t("a name for AI tools"), own ? r.name : "");
-      const otherBox = el("span", "row", other, button(t("Save"), () => set("name", other.value.trim())));
+      const otherBox = el("span", "row", other, button(t("Save"), () => act(msg, () => save("name", other.value.trim()))));
       otherBox.hidden = !own;
       const name = choose([["real", "Its real name"], ["anonymous", "Anonymous"], ["other", "Another name"]], own ? "other" : r.name,
         (v) => (v === "other" ? (otherBox.hidden = false) : set("name", v)));
-      const hidden = Object.assign(checkbox(r.hidden), { onchange: () => set(r.hidden ? "show" : "hide") });
-      const branches = Object.assign(checkbox(r.branches === "on"), { disabled: r.hidden, onchange: () => set("branches", r.branches === "on" ? "off" : "on") });
+      const hidden = Object.assign(checkbox(r.hidden), { onchange: () => set(hidden.checked ? "hide" : "show") });
+      const branches = Object.assign(checkbox(r.branches === "on"), { disabled: r.hidden, onchange: () => set("branches", branches.checked ? "on" : "off") });
       box.replaceChildren(
         el("div", "grow", el("strong", "", r.repository), " ", el("span", "dim", home(r.path))),
         el("div", "item-actions", label(hidden, t("Hidden from AI tools"))),
@@ -491,12 +523,14 @@ async function aiTools(main) {
     repositories.length ? el("div", "scroll tall", ...repositories.map(line)) : el("p", "dim", t("No repository is collected yet.")));
 }
 
+// Privacy: what is collected and kept, as settings, like the system's Privacy & Security. The data
+// policy, a document like terms, has a section of its own.
 async function privacy(main) {
   const cfg = await gitfolio("config");
   const msg = el("p", ""), word = input("text", t("a customer or internal project name"));
   const config = (...args) => act(msg, () => gitfolio("config", ...args), () => go("privacy"));
   const record = checkbox(!cfg.gitHistoryOff);
-  record.onchange = () => config("git-history", record.checked ? "on" : "off");
+  saved(record, msg, (v) => gitfolio("config", "git-history", v ? "on" : "off"), () => go("privacy"));
   const today = () => { const d = new Date(); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, "0")).join("-"); };
   const exported = el("p", "");
   const save = async () => {
@@ -634,8 +668,8 @@ const newest = (upToDate, latest) => upToDate === undefined ? t("The newest vers
 async function about(main) {
   let path, bundled, version, git, problem;
   try {
-    [{ path, bundled }, { version }, git] = await Promise.all([call("cli_status"),
-      gitfolio("version").then((v) => ({ version: v.release || v.version })), gitfolio("git")]);
+    ({ path, bundled } = await call("cli_status")); // first: known even when the GitFolio CLI cannot run
+    [{ version }, git] = await Promise.all([gitfolio("version").then((v) => ({ version: v.release || v.version })), gitfolio("git")]);
   } catch (e) {
     problem = e; // one installed on its own, too old (cliTooOld): the app can still be removed
   }
@@ -657,13 +691,8 @@ async function about(main) {
     if (bundled) return { text: [t("It comes with GitFolio, and is updated with it.")] };
     const v = await gitfolio("version", "--latest");
     return { text: [newest(v.upToDate, v.latest)], update: v.upToDate === false && (async () => {
-      progress(t("Updating the GitFolio CLI installed on this computer… With Homebrew this can take a minute or two."));
-      try {
-        const r = JSON.parse(await call("update_cli"));
-        return [el("p", "", el("span", "ok", "✓ "), t("The GitFolio CLI installed on this computer was updated from {from} to {to}.", r))];
-      } finally {
-        progress();
-      }
+      const done = await updateCli();
+      return done.length ? done : [el("p", "dim", t("The latest version."))];
     }) };
   };
   // git is updated where it came from, by gitfolio git update (0.7.0 on): before it, the arrow would only
@@ -760,15 +789,7 @@ async function setup(main) {
       async function update() {
         updated = true;
         box.replaceChildren(msg);
-        progress(t("Updating the GitFolio CLI installed on this computer… With Homebrew this can take a minute or two."));
-        try {
-          const r = JSON.parse(await call("update_cli"));
-          msg.replaceChildren(r?.updated ? el("p", "", el("span", "ok", "✓ "), t("The GitFolio CLI installed on this computer was updated from {from} to {to}.", r)) : "");
-        } catch (e) {
-          msg.replaceChildren(el("p", "", ...drawError(e)));
-        } finally {
-          progress();
-        }
+        await fill(msg, updateCli);
       }
       // Whether both are there and the update said nothing; if not, what is missing or what it said, drawn.
       async function check() {
@@ -872,13 +893,16 @@ const SECTIONS = { overview, general, account, sync, dependencies, privacy, ai: 
 const LABELS = { policy: "Data policy", ai: "AI tools" }; // the menu's words where they are not the section's name
 const goTo = (section) => go(section); // where an error is solved (app.js)
 
-let current;
+// Opens a section. Each is given the page as its own: it draws there only while it is the one opened last
+// (open()), so a slow one, answering after the user went on, never lands on the next one's page.
+let current, opened = 0;
 function go(name) {
   current = name;
   const draw = SECTIONS[name] ?? setup;
   document.body.classList.toggle("setup", draw === setup); // the setup alone, as an installer, no menu
   for (const b of $("nav").querySelectorAll("button")) b.className = b.dataset.section === name ? "on" : "";
-  const main = $("main");
+  const at = ++opened, open = () => at === opened;
+  const main = { open, replaceChildren: (...kids) => { if (open()) $("main").replaceChildren(...kids); } };
   main.replaceChildren(el("p", "dim", "…"));
   draw(main).catch((e) => main.replaceChildren(el("p", "", ...drawError(e))));
 }

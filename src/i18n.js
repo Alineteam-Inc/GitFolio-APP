@@ -15,7 +15,6 @@ const MESSAGES = {
     "Local mode has no daily sync: choose automatic sync first.": "로컬 모드에는 매일 동기화가 없습니다. 먼저 자동 동기화를 고르세요.",
     "Sync settings": "동기화 설정",
     "aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile.": "aline.team이 아직 GitFolio에 기술 스택을 주지 않습니다. aline.team 프로필에서 볼 수 있습니다.",
-    "None.": "없음.",
     "No developer type yet: aline.team makes it from the commits sent.": "아직 개발자 유형이 없습니다. aline.team이 보낸 커밋으로 만듭니다.",
     "{position} · with AI {type}": "{position} · AI와 함께 {type}",
     "Scores": "능력치",
@@ -117,7 +116,6 @@ const MESSAGES = {
     "Local mode has no daily sync.": "로컬 모드에는 매일 동기화가 없습니다.",
     "Every day at {time}, for pushes the hooks missed.": "매일 {time}에 훅이 놓친 push를 보냅니다.",
     "Off. Once a day at a set time, it sends pushes the hooks missed.": "꺼짐. 켜면 매일 정한 시각에 훅이 놓친 push를 보냅니다.",
-    "Turn off": "끄기",
     "Last sync": "마지막 동기화",
     "Dependencies": "의존성",
     "The packages your repositories use, read only from the package manager files you allow.":
@@ -292,7 +290,6 @@ const MESSAGES = {
     "Local mode has no daily sync: choose automatic sync first.": "ローカルモードには毎日の同期がありません。先に自動同期を選んでください。",
     "Sync settings": "同期の設定",
     "aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile.": "aline.teamはまだGitFolioに技術スタックを提供していません。aline.teamのプロフィールで確認できます。",
-    "None.": "なし。",
     "No developer type yet: aline.team makes it from the commits sent.": "開発者タイプはまだありません。aline.teamが送信されたコミットから作成します。",
     "{position} · with AI {type}": "{position} · AI併用 {type}",
     "Scores": "スコア",
@@ -394,7 +391,6 @@ const MESSAGES = {
     "Local mode has no daily sync.": "ローカルモードには毎日の同期がありません。",
     "Every day at {time}, for pushes the hooks missed.": "毎日{time}に、フックが取りこぼしたpushを送ります。",
     "Off. Once a day at a set time, it sends pushes the hooks missed.": "オフ。オンにすると毎日決まった時刻に、フックが取りこぼしたpushを送ります。",
-    "Turn off": "オフにする",
     "Last sync": "最終同期",
     "Dependencies": "依存関係",
     "The packages your repositories use, read only from the package manager files you allow.":
