@@ -32,14 +32,45 @@ function codeInput(length) {
 // ---- Parts, used by the sections and the setup ----
 
 // Log in or sign up with a code sent by email (login --email, then --code), then onDone.
+// Waits for the user at GitHub (login --github, email github): gitfolio gives a code to enter there, shown here with
+// the way to GitHub, and answers once the user approved; then `done` with its answer. Cancel, or an error with Back,
+// goes `back`; signupConsent (no account yet) goes to `consent` with the terms.
+function atGitHub(box, args, { done, back, consent = null }) {
+  const code = el("div", ""), msg = el("p", "");
+  let cancelled = false;
+  githubCode = (p) => {
+    const copy = button(t("Copy code"), () => navigator.clipboard.writeText(p.userCode).then(() => (copy.textContent = t("Copied")), () => {}));
+    code.replaceChildren(el("p", "", t("Enter this code at GitHub, then approve GitFolio there:")),
+      el("div", "row", el("strong", "github-code", p.userCode), copy, button(t("Open GitHub"), () => call("open_url", { url: p.verificationUri }))));
+  };
+  box.replaceChildren(code, msg, el("div", "row", button(t("Cancel"), () => ((cancelled = true), call("cancel_github")))));
+  progress(t("Waiting for you at GitHub…"));
+  gitfolio(...args).then(done, (e) => {
+    if (cancelled) return back();
+    if (e.code === "signupConsent" && consent) return consent(e);
+    box.replaceChildren(el("p", "", ...drawError(e)), el("div", "row", button(t("Back"), back)));
+  }).finally(() => ((githubCode = null), progress()));
+}
+
 function loginForm(onDone) {
   const box = el("div", "");
   const email = input("email", "you@example.com");
   const msg = el("p", "");
-  box.replaceChildren(el("p", "", t("Log in or sign up to aline.team with a code sent by email.")),
+  const start = () => box.replaceChildren(
+    // GitHub first: one approval there logs in or signs up, and verifies its emails
+    el("div", "row", button(t("Continue with GitHub"), () => github([]))),
+    el("p", "", t("Log in or sign up to aline.team with a code sent by email.")),
     el("div", "row", email, button(t("Send code"), () => act(msg, send)),
       // a code sent already, as by an AI tool through GitFolio, which leaves it to be entered here
       button(t("I have a code"), () => codeStep({ email: email.value.trim(), accountExists: true }))), msg);
+  // No account for the GitHub email yet: the terms agreed to first, then GitHub again, signing up.
+  const github = (signup) => atGitHub(box, ["login", "--github", ...signup], { done: onDone, back: start, consent: (e) => {
+    const agree = checkbox(), notify = checkbox(), msg = el("p", "");
+    box.replaceChildren(el("p", "pre dim", e.signupNotice ?? ""), label(agree, t("I agree, and sign up")), e.notifyQuestion ? label(notify, e.notifyQuestion) : "",
+      el("div", "row", button(t("Back"), start), button(t("Sign up with GitHub"), () => (agree.checked
+        ? github(["--signup", ...(notify.checked ? ["--notify"] : [])]) : msg.replaceChildren(t("Agree to the terms above to sign up."))))), msg);
+  } });
+  start();
   async function send() {
     try {
       codeStep(await gitfolio("login", "--email", email.value.trim()));
@@ -120,6 +151,9 @@ function emails() {
             iconButton(ICONS.close, t("Remove"), () => change("rm", e.email), "remove")));
       }),
       el("div", "row", add, iconButton(ICONS.plus, t("Add"), () => change("add", add.value.trim()))),
+      // GitHub's emails at once, its no-reply one too: approved there, added and verified here
+      el("div", "row", button(t("Connect GitHub"), () => atGitHub(box, ["email", "github"], { done: draw, back: draw })),
+        el("span", "dim", t("Adds and verifies your GitHub account's emails at once."))),
       msg,
     ];
   });
@@ -897,6 +931,7 @@ const goTo = (section) => go(section); // where an error is solved (app.js)
 // (open()), so a slow one, answering after the user went on, never lands on the next one's page.
 let current, opened = 0;
 function go(name) {
+  call("cancel_github"); // a wait at GitHub ends with the page that showed it
   current = name;
   const draw = SECTIONS[name] ?? setup;
   document.body.classList.toggle("setup", draw === setup); // the setup alone, as an installer, no menu

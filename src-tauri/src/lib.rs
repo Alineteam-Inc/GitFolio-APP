@@ -1,9 +1,9 @@
 use std::{
     fs,
-    sync::Mutex,
+    sync::{Arc, Mutex},
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::{Child, Command, Stdio},
 };
 
 use tauri::{
@@ -226,6 +226,22 @@ fn unlink(own: &Path, at: &Path) -> std::io::Result<()> {
 /// Where gitfolio's progress goes: the window that asked, as "progress" events.
 type Progress = Option<(AppHandle, String)>;
 
+/// The gitfolio waiting for the user at GitHub (login --github, email github: minutes), for cancel_github to end;
+/// one at a time, a new one ending the one before.
+static AT_GITHUB: Mutex<Option<Arc<Mutex<Child>>>> = Mutex::new(None);
+
+fn waits_at_github(args: &[&str]) -> bool {
+    args.contains(&"--github") || args == ["email", "github"]
+}
+
+/// Ends the gitfolio waiting at GitHub, when there is one: the user cancelled, or left its page.
+#[tauri::command]
+fn cancel_github() {
+    if let Some(child) = AT_GITHUB.lock().unwrap().take() {
+        let _ = child.lock().unwrap().kill();
+    }
+}
+
 /// Runs gitfolio with --json: its JSON on success, its JSON error (or a message from one that could not
 /// run) on failure. Its stdin is closed, so it asks nothing and, without a login, answers loginFirst.
 /// Of what goes to stderr, the progress lines ({"progress": ...}) go to `progress`; the lines for
@@ -253,9 +269,17 @@ fn run_cli(cli: &Path, args: &[&str], progress: Progress) -> Result<String, Stri
         }
         rest
     });
+    let mut out = child.stdout.take().expect("piped");
+    let child = Arc::new(Mutex::new(child));
+    if waits_at_github(args) {
+        cancel_github();
+        *AT_GITHUB.lock().unwrap() = Some(child.clone());
+    }
     let mut stdout = String::new();
-    child.stdout.take().expect("piped").read_to_string(&mut stdout).map_err(|e| e.to_string())?;
-    let ok = child.wait().map_err(|e| e.to_string())?.success();
+    let read = out.read_to_string(&mut stdout); // not under the child's lock: cancel_github ends it meanwhile
+    AT_GITHUB.lock().unwrap().take_if(|c| Arc::ptr_eq(c, &child));
+    read.map_err(|e| e.to_string())?;
+    let ok = child.lock().unwrap().wait().map_err(|e| e.to_string())?.success();
     let stderr = reader.join().unwrap_or_default();
     match (ok, stdout.trim().is_empty()) {
         (true, _) => Ok(stdout),
@@ -270,7 +294,7 @@ fn allowed(args: &[String]) -> bool {
     let has = |flag: &str| args.iter().any(|a| a == flag);
     match args.first().map(String::as_str) {
         Some("init") => has("--policy") || has("--scan"),
-        Some("login") => has("--email"),
+        Some("login") => has("--email") || has("--github"),
         // the portfolio's text only: a file is written by save_portfolio, where the user picks
         Some("portfolio") => args.len() == 1,
         Some(c) => [
@@ -684,7 +708,7 @@ pub fn run() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, update_cli, app_update, update_app, open_url, pick_folder, export, save_portfolio, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
+        .invoke_handler(tauri::generate_handler![gitfolio, cli_status, install_cli, update_cli, app_update, update_app, open_url, pick_folder, export, save_portfolio, cancel_github, open, language, set_language, autostart, set_autostart, set_tray_icon, uninstall, quit])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -712,9 +736,29 @@ mod tests {
     #[test]
     fn allows_only_what_windows_need() {
         let args = |s: &str| s.split(' ').map(String::from).collect::<Vec<_>>();
-        assert!(["status", "work", "work --from 2026", "portfolio", "init --policy", "login --email a@b.c"].iter().all(|a| allowed(&args(a))));
+        assert!(["status", "work", "work --from 2026", "portfolio", "init --policy", "login --email a@b.c", "login --github --signup", "email github"].iter().all(|a| allowed(&args(a))));
         // no file written where a page says, no hook or MCP run, no update or uninstall behind the app's back
         assert!(!["portfolio /tmp/x.md", "portfolio --from x.md", "hook pre-push", "mcp", "update", "uninstall", "init", "login"].iter().any(|a| allowed(&args(a))));
+    }
+
+    // A gitfolio waiting at GitHub is ended by cancel_github, and its run then answers at once.
+    #[cfg(unix)]
+    #[test]
+    fn cancels_the_wait_at_github() {
+        let tmp = std::env::temp_dir().join(format!("gitfolio-gui-github-{}", std::process::id()));
+        fs::create_dir_all(&tmp).unwrap();
+        let cli = tmp.join(CLI_NAME);
+        fs::write(&cli, "#!/bin/sh\nexec sleep 60\n").unwrap();
+        fs::set_permissions(&cli, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+        let started = std::time::Instant::now();
+        let run = std::thread::spawn(move || run_cli(&cli, &["login", "--github"], None));
+        while AT_GITHUB.lock().unwrap().is_none() {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        cancel_github();
+        assert!(run.join().unwrap().is_err());
+        assert!(started.elapsed().as_secs() < 30 && AT_GITHUB.lock().unwrap().is_none());
+        fs::remove_dir_all(&tmp).unwrap();
     }
 
     #[test]

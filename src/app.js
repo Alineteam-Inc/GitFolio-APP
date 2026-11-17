@@ -132,10 +132,13 @@ async function gitfolio(...args) {
   }
 }
 
-// gitfolio's progress on a long run (sync, scan --all): {"progress": {step, text, done, total}}.
+// gitfolio's progress on a long run (sync, scan --all): {"progress": {step, text, done, total}}. GitHub's code to
+// enter there (step githubCode: userCode, verificationUri) goes to the page that asked for it (githubCode).
+let githubCode = null;
 window.__TAURI__.event.listen("progress", ({ payload }) => {
-  const { text, done, total } = JSON.parse(payload).progress;
-  if (!held) showProgress(text, done, total);
+  const p = JSON.parse(payload).progress;
+  if (p.step === "githubCode") return githubCode?.(p);
+  if (!held) showProgress(p.text, p.done, p.total);
 });
 
 const when = (t) => t.slice(0, 16).replace("T", " "); // RFC3339 in local time → "2026-10-22 09:00"
@@ -149,6 +152,9 @@ const REMEDIES = {
   signupConsent: ["This email has no aline.team account yet: agree to the terms to sign up."],
   statsSlow: ["aline.team is still working out your developer type. Refresh in a minute."],
   scheduleLocal: ["Local mode has no daily sync: choose automatic sync first.", "Sync settings", "sync"],
+  githubDenied: ["GitHub was not approved."],
+  githubExpired: ["The code ran out before GitHub was approved. Try again."],
+  githubUnavailable: ["GitHub cannot be used right now: use a code sent by email instead."],
   stackUnavailable: ["aline.team does not give GitFolio the tech stack yet. It is on your aline.team profile."],
   portfolioNoBrowser: ["A PDF needs Google Chrome or another Chromium browser on this computer: save it as Markdown instead."],
   portfolioPDFFailed: ["The PDF could not be printed. Try again, or save it as Markdown."],
