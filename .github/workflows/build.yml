@@ -3,10 +3,14 @@ name: build
 # GitFolio runs on macOS, Linux and Windows, so every change is built on all three, bundled as each system
 # installs it, with the gitfolio CLI it carries; then each package is installed and started. release.yml
 # runs this with the CLI release the app ships.
+# main only ever takes what stage built, and a release builds its tag again: main is not built a third time. A
+# change to the documents alone builds nothing.
 on:
   push:
-    branches: [main, stage]
+    branches: [stage]
+    paths-ignore: ["**.md", LICENSE]
   pull_request:
+    paths-ignore: ["**.md", LICENSE]
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -17,6 +21,11 @@ on:
 
 permissions:
   contents: read
+
+# A newer push to a branch ends the build of the one before; a release's build (its tag) is never ended.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   build:
@@ -107,8 +116,12 @@ jobs:
             unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_API_ISSUER APPLE_API_KEY
           fi
           unset APPLE_API_PRIVATE_KEY
-          npm run tauri build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} \
-            ${TAURI_SIGNING_PRIVATE_KEY:+--config '{"bundle":{"createUpdaterArtifacts":true}}'}
+          bundle() {
+            npm run tauri build -- --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} \
+              ${TAURI_SIGNING_PRIVATE_KEY:+--config '{"bundle":{"createUpdaterArtifacts":true}}'}
+          }
+          # macOS's disk image tool fails now and then on a runner (bundle_dmg.sh): once more, what is compiled kept
+          bundle || { [ "$RUNNER_OS" = macOS ] && bundle; }
           b=src-tauri/target/${{ matrix.target }}/release/bundle
           n=dist/GitFolio_${{ matrix.name }}
           mkdir dist
