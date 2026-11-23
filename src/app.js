@@ -196,7 +196,8 @@ async function fill(into, f) {
   }
 }
 
-// Runs `f`, then `after`; an error shows in `msg`.
+// Runs `f`, then `after`; an error shows in `msg`. `after` (the page drawn again) only while `msg` is still on
+// the page: one the user left meanwhile, for another section, is never brought back.
 async function act(msg, f, after) {
   msg.replaceChildren();
   try {
@@ -205,7 +206,7 @@ async function act(msg, f, after) {
     msg.replaceChildren(...drawError(e));
     return;
   }
-  await after?.();
+  if (msg.isConnected) await after?.();
 }
 
 // The developer types' pictures as aline.team draws them (as gitfolio's stats.go has them): 11 squares wide,
