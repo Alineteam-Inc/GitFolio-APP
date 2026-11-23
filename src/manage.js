@@ -137,9 +137,9 @@ function emails() {
     return [
       // One line each: the email and what it is, its buttons at the end.
       ...emails.map((e) => {
-        // How aline.team takes it, as gitfolio says (verifyBy): verified, by a code, by the GitHub or GitLab
-        // account a no-reply email belongs to linked there, or not at all. Before 0.7.0 it said only verified.
-        const by = "verifyBy" in e ? e.verifyBy : e.verified ? null : "code";
+        // How aline.team takes it, as gitfolio says (verifyBy): verified (null), by a code, by the GitHub or GitLab
+        // account a no-reply email belongs to linked there, or not at all.
+        const by = e.verifyBy;
         return el("div", "item",
           el("span", "", e.email),
           ...[e.primary && t("primary"), e.verified && t("verified"), e.noreply && "no-reply", by === "none" && t("not taken by aline.team")]
@@ -621,9 +621,8 @@ async function profile(main) {
       const u = await gitfolio("stack");
       return [drawTimeline(u), ...drawStack(u)];
     }),
-    // A GitFolio CLI before 0.8.0 knows no work command, nor a portfolio for the app: those parts are left out then.
-    gitfolio("work").then((w) => (ai.replaceChildren(...drawAIWork(w)), portfolio.replaceChildren(...portfolioParts())),
-      (e) => (["unknownCommand", "didYouMeanWord"].includes(e.code) ? (ai.hidden = portfolio.hidden = true) : ai.replaceChildren(el("p", "", ...drawError(e))))),
+    fill(ai, async () => drawAIWork(await gitfolio("work"))),
+    fill(portfolio, async () => portfolioParts()),
   ]);
   main.replaceChildren(el("header", "", el("h2", "", t("Developer type, from aline.team")), iconButton(ICONS.refresh, t("Refresh"), () => load(true))),
     stats, el("h2", "", t("Tech stack")), el("p", "dim", t("From the repositories on this computer.")), stack, ai, portfolio);
@@ -729,12 +728,10 @@ async function about(main) {
       return done.length ? done : [el("p", "dim", t("The latest version."))];
     }) };
   };
-  // git is updated where it came from, by gitfolio git update (0.7.0 on): before it, the arrow would only
-  // say again the words for how, already shown.
-  const gitUpdates = !/^0\.[0-6]\./.test(version ?? "");
+  // git is updated where it came from, by gitfolio git update.
   const checkGit = async () => {
     const g = await gitfolio("git", "--latest");
-    return { text: [newest(g.upToDate, g.latest), g.updateHint ? ` ${g.updateHint}` : ""], update: g.upToDate === false && gitUpdates && (async () => {
+    return { text: [newest(g.upToDate, g.latest), g.updateHint ? ` ${g.updateHint}` : ""], update: g.upToDate === false && (async () => {
       progress(t("Updating git…"));
       try {
         const r = await gitfolio("git", "update");
