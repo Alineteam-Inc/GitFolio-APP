@@ -606,6 +606,18 @@ fn open(app: AppHandle, section: String) -> Result<(), String> {
     open_manage(&app, &section).map_err(|e| e.to_string())
 }
 
+/// The section the GitFolio window opens on by itself at the start, from what `gitfolio status` answered: the
+/// setup until GitFolio is set up, none once it is. A status that fails is no reason to set up again: an app
+/// update that needs a newer GitFolio CLI than the one installed on its own (cliTooOld) fails it, for a user set
+/// up long ago. The overview then says what is wrong, with the button that solves it.
+fn startup_section(status: Result<String, String>) -> Option<&'static str> {
+    match status.map(|s| serde_json::from_str::<serde_json::Value>(&s).map(|v| v["setUp"] == true)) {
+        Ok(Ok(true)) => None,
+        Ok(Ok(false)) => Some("setup"),
+        _ => Some("overview"),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -640,13 +652,12 @@ pub fn run() {
             }
 
             // Until GitFolio is set up (and the first time), its setup opens by itself, as an installer
-            // would: installing GitFolio goes on there. Off the main thread, as it asks gitfolio first.
+            // would: installing GitFolio goes on there (startup_section). Off the main thread, as it asks
+            // gitfolio first.
             let handle = app.handle().clone();
             std::thread::spawn(move || {
-                let status = cli().and_then(|(cli, _)| run_cli(&cli, &["status"], None));
-                let set_up = status.ok().and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).is_some_and(|v| v["setUp"] == true);
-                if !set_up {
-                    let _ = open_manage(&handle, "setup");
+                if let Some(section) = startup_section(cli().and_then(|(cli, _)| run_cli(&cli, &["status"], None))) {
+                    let _ = open_manage(&handle, section);
                 }
             });
 
@@ -735,6 +746,16 @@ mod tests {
     fn versions() {
         assert!(["0.8.0", "0.8.1-dev", "0.10.0", "1.0.0", "dev"].iter().all(|v| new_enough(v)));
         assert!(!["0.7.2", "0.5.9", "0.0.1"].iter().any(|v| new_enough(v)));
+    }
+
+    // The setup opens by itself only for one not set up: never again for a user set up long ago whose status fails,
+    // as an app update that needs a newer GitFolio CLI than the one installed on its own makes it.
+    #[test]
+    fn opens_the_setup_only_until_set_up() {
+        assert_eq!(startup_section(Ok(r#"{"setUp":true}"#.into())), None);
+        assert_eq!(startup_section(Ok(r#"{"setUp":false}"#.into())), Some("setup"));
+        assert_eq!(startup_section(Err(r#"{"error":{"code":"cliTooOld"}}"#.into())), Some("overview"));
+        assert_eq!(startup_section(Ok("not JSON".into())), Some("overview"));
     }
 
     #[test]
