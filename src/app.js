@@ -45,9 +45,8 @@ function label(box, ...text) {
   return el("label", "", box, el("span", "", ...text));
 }
 
-// A button running `f`, disabled until it is done.
-function button(text, f) {
-  const b = el("button", "", text);
+// The button `b` running `f` when clicked, disabled until it is done.
+function runs(b, f) {
   b.onclick = async () => {
     b.disabled = true;
     try {
@@ -57,6 +56,11 @@ function button(text, f) {
     }
   };
   return b;
+}
+
+// A button running `f`, disabled until it is done.
+function button(text, f) {
+  return runs(el("button", "", text), f);
 }
 
 // Small icons for buttons, drawn in the text's colour; the button's words show on hover.

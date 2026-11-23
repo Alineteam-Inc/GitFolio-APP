@@ -51,20 +51,13 @@ function once() {
 }
 
 // The foot: refresh and sync now at its left, what is not sent yet between; settings (the GitFolio window,
-// its setup until done) and quit at its right.
-const icon = (id, words, f) => Object.assign($(id), { title: words, ariaLabel: words, onclick: f });
+// its setup until done) and quit at its right. Each disabled until it is done (runs, app.js).
+const icon = (id, words, f) => runs(Object.assign($(id), { title: words, ariaLabel: words }), f);
 const readied = ready().then(async () => {
   $("name").textContent = `GitFolio ${await window.__TAURI__.app.getVersion()}`; // the app's own version (the GitFolio CLI's is in About)
-  icon("refresh", t("Refresh"), async () => {
-    const b = /** @type {HTMLButtonElement} */ ($("refresh"));
-    b.disabled = true;
-    await load(true);
-    b.disabled = false;
-  });
+  icon("refresh", t("Refresh"), () => load(true));
   // Sent, it says so in green in the foot for a while, then what is left again; only failures stay above.
   icon("sync", t("Sync now"), async () => {
-    const b = /** @type {HTMLButtonElement} */ ($("sync"));
-    b.disabled = true;
     let r;
     await fill($("result"), async () => [drawFailures((r = await gitfolio("sync")).failed ?? [])]);
     await fill($("state"), async () => drawState(await gitfolio("status"))); // the last sync, and what is left
@@ -74,7 +67,6 @@ const readied = ready().then(async () => {
       Object.assign($("unsent"), { textContent: done, className: "spacer ok" });
       setTimeout(() => $("unsent").textContent === done && Object.assign($("unsent"), { textContent: left, className: "spacer" }), 5000);
     }
-    b.disabled = false;
   });
   icon("settings", t("Settings"), () => goTo("overview"));
   icon("quit", t("Quit"), () => call("quit"));

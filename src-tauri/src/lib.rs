@@ -62,19 +62,22 @@ fn hook_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// What `gitfolio version --json` says: its version and whether an app bundles it. None from a
-/// gitfolio older than 0.6.0, which has no --json.
+/// What `gitfolio version --json` says. None from a gitfolio older than 0.6.0, which has no --json.
+fn version_json(cli: &Path) -> Option<serde_json::Value> {
+    serde_json::from_slice(&gitfolio_cmd(cli).args(["version", "--json"]).output().ok()?.stdout).ok()
+}
+
+/// A gitfolio's version and whether an app bundles it (version_json).
 fn version_of(cli: &Path) -> Option<(String, bool)> {
-    let out = gitfolio_cmd(cli).args(["version", "--json"]).output().ok()?;
-    let v: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
+    let v = version_json(cli)?;
     Some((v["version"].as_str()?.to_string(), v["bundled"].as_bool()?))
 }
 
-/// The screen language gitfolio works out from the device (version --json "lang": en, ko or ja).
-fn lang_of(cli: &Path) -> String {
-    let out = gitfolio_cmd(cli).args(["version", "--json"]).output().ok();
-    let v: Option<serde_json::Value> = out.and_then(|o| serde_json::from_slice(&o.stdout).ok());
-    v.and_then(|v| v["lang"].as_str().map(str::to_string)).unwrap_or_else(|| "en".into())
+/// The screen language the gitfolio in use works out from the device (version --json "lang": en, ko or
+/// ja), "" when it cannot say: then English.
+fn lang() -> String {
+    let v = cli().ok().and_then(|(cli, _)| version_json(&cli));
+    v.and_then(|v| v["lang"].as_str().map(str::to_string)).unwrap_or_default()
 }
 
 /// The tray menu's words: open, uninstall, quit.
@@ -101,8 +104,7 @@ fn offer_update(app: &AppHandle) {
     let Some(update) = tauri::async_runtime::block_on(async { app.updater().ok()?.check().await.ok()? }) else {
         return;
     };
-    let lang = cli().map(|(cli, _)| lang_of(&cli)).unwrap_or_default();
-    let (text, yes, no) = update_words(&lang, &update.version, &update.current_version);
+    let (text, yes, no) = update_words(&lang(), &update.version, &update.current_version);
     let asked = app.dialog().message(text).title("GitFolio").buttons(MessageDialogButtons::OkCancelCustom(yes.into(), no.into()));
     if asked.blocking_show() && tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {})).is_ok() {
         app.restart();
@@ -141,7 +143,7 @@ async fn update_app(webview: Webview, text: String) -> Result<(), String> {
 /// The tray menu, in gitfolio's language: Linux sends no tray click events, so it is the way to the
 /// windows there.
 fn tray_menu<R: Runtime, M: Manager<R>>(app: &M) -> tauri::Result<Menu<R>> {
-    let [open, uninstall, quit] = menu_words(&cli().map(|(cli, _)| lang_of(&cli)).unwrap_or_default());
+    let [open, uninstall, quit] = menu_words(&lang());
     let open = MenuItem::with_id(app, "open", open, true, None::<&str>)?;
     let uninstall = MenuItem::with_id(app, "uninstall", uninstall, true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", quit, true, None::<&str>)?;
@@ -627,6 +629,9 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            // The language set in General, kept in the app's config folder: first, as every gitfolio run takes it.
+            *LANG.lock().unwrap() = fs::read_to_string(app.path().app_config_dir()?.join("language")).unwrap_or_default();
+
             // A menu bar app: no Dock icon.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -669,9 +674,6 @@ pub fn run() {
                     std::thread::sleep(std::time::Duration::from_secs(24 * 60 * 60));
                 });
             }
-
-            // The language set in General, kept in the app's config folder.
-            *LANG.lock().unwrap() = fs::read_to_string(app.path().app_config_dir()?.join("language")).unwrap_or_default();
 
             TrayIconBuilder::with_id("tray")
                 .icon(app.default_window_icon().unwrap().clone())
