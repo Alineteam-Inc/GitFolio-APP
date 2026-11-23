@@ -172,13 +172,14 @@ const REMEDIES = {
 };
 REMEDIES.didYouMeanWord = REMEDIES.usage; // usage, with a guess at the word meant
 
-// An error in words and, when the app solves it, a button to where, or that solves it here: inline, for a line
-// of its own; what went wrong then on its own lines under it, in `after` (the setup's, where its own try said it:
-// once, not twice). A too old GitFolio CLI is updated, then the page read again with it.
+// An error in words and, when the app solves it, a button to where, or that solves it here, on its own row under
+// the words, never among them; what went wrong then on its own lines under it, in `after` (the setup's, where its
+// own try said it: once, not twice). All for one line of the page (a p), which goes as a whole. A too old GitFolio
+// CLI is updated, then the page read again with it.
 function drawError(e, after = el("div", "")) {
   const [words, action, section] = REMEDIES[e.code]?.map((w, i) => (i < 2 ? t(w) : w)) ?? [e.message ?? String(e)];
   const f = section === "update-cli" ? () => updateCli().then(() => location.reload(), (x) => after.replaceChildren(...drawError(x))) : () => goTo(section);
-  return [el("span", "error", words), action ? button(action, f) : "", after];
+  return [el("span", "error", words), action ? el("div", "row", button(action, f)) : "", after];
 }
 
 // The GitFolio CLI installed on its own, brought to its newest release (update_cli), its progress shown: what
@@ -420,12 +421,14 @@ const SERVICES = { github: "GitHub", gitlab: "GitLab" };
 function drawWaiting(waiting) {
   const by = new Map();
   for (const w of waiting) by.set(w.email, { ...w, names: [...(by.get(w.email)?.names ?? []), w.namespace] });
+  // The words, the repositories, then the way's button on its own row under them.
   return [...by.values()].map((w) => el("div", "",
-    SERVICES[w.verifyBy] ? el("p", "", t("These are sent once your {service} account is linked on aline.team, for {email}:", { service: SERVICES[w.verifyBy], email: w.email }),
-      button(t("Open aline.team"), () => call("open_url", { url: w.verifyUrl })))
-      : w.verifyBy === "none" ? el("p", "", t("aline.team does not take commits by {email}: these stay unsent. Commit with another email.", { email: w.email }))
-      : el("p", "", t("These are sent once {email} is verified:", { email: w.email }), button(t("Account"), () => goTo("account"))),
-    el("div", "scroll", el("p", "dim", w.names.join(", ")))));
+    el("p", "", SERVICES[w.verifyBy] ? t("These are sent once your {service} account is linked on aline.team, for {email}:", { service: SERVICES[w.verifyBy], email: w.email })
+      : w.verifyBy === "none" ? t("aline.team does not take commits by {email}: these stay unsent. Commit with another email.", { email: w.email })
+      : t("These are sent once {email} is verified:", { email: w.email })),
+    el("div", "scroll", el("p", "dim", w.names.join(", "))),
+    SERVICES[w.verifyBy] ? el("div", "row", button(t("Open aline.team"), () => call("open_url", { url: w.verifyUrl })))
+      : w.verifyBy === "none" ? "" : el("div", "row", button(t("Account"), () => goTo("account")))));
 }
 
 // gitfolio sync --json, in a sentence or a few.

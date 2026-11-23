@@ -615,7 +615,7 @@ async function gitHistory(main) {
   main.replaceChildren(
     el("header", "", el("h1", "", t("History")), iconButton(ICONS.refresh, t("Refresh"), () => go("history"))),
     el("p", "dim", t("Each run of GitFolio that called git, newest first, with the git commands it ran, as git recorded them.")),
-    ...(!h.on ? [el("p", "", t("The record is off."), " ", button(t("Privacy"), () => go("privacy")))]
+    ...(!h.on ? [el("p", "", t("The record is off.")), el("div", "row", button(t("Privacy"), () => go("privacy")))]
       : !h.runs.length ? [el("p", "dim", t("No git commands recorded yet."))]
       : [el("div", "scroll tall", ...[...h.runs].reverse().map((r) => el("details", "run",
           el("summary", "", `${when(r.at)}  ${r.command}`, el("span", "dim", `  · git ${r.git.length}`)),
