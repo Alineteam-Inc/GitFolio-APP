@@ -39,9 +39,10 @@ fn gitfolio_cmd(cli: &Path) -> Command {
     cmd
 }
 
-/// The oldest gitfolio this app works with: 0.8.0, which logs in with GitHub and connects it (login --github,
+/// The oldest gitfolio this app works with: 0.9.0, which writes a portfolio over a file the user chose to replace
+/// (portfolio --replace), as save_portfolio asks; 0.8.0 on, it logs in with GitHub and connects it (login --github,
 /// email github), as the windows offer.
-const MIN_CLI: [u32; 3] = [0, 8, 0];
+const MIN_CLI: [u32; 3] = [0, 9, 0];
 
 /// The gitfolio bundled with the app (bundle.externalBin), next to this executable.
 fn bundled() -> Result<PathBuf, String> {
@@ -441,8 +442,8 @@ async fn export(app: AppHandle, date: String) -> Result<Option<PathBuf>, String>
 }
 
 /// Saves the user's portfolio (gitfolio portfolio) where the user picks in the system's own window, as Markdown to
-/// edit or as a PDF: its JSON (path, missing), or none when the user cancels. gitfolio never writes over a file, so
-/// one the window asked to replace is removed first.
+/// edit or as a PDF: its JSON (path, missing), or none when the user cancels. A file there, which the user agreed to
+/// replace in that window, is replaced only once the new one is written (--replace): one that fails leaves it be.
 #[tauri::command]
 async fn save_portfolio(webview: Webview, pdf: bool) -> Result<Option<String>, String> {
     let (ext, kind) = if pdf { ("pdf", "PDF") } else { ("md", "Markdown") };
@@ -450,11 +451,8 @@ async fn save_portfolio(webview: Webview, pdf: bool) -> Result<Option<String>, S
     let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
         return Ok(None);
     };
-    if path.exists() {
-        fs::remove_file(&path).map_err(|e| e.to_string())?;
-    }
     let progress = Some((webview.app_handle().clone(), webview.label().to_string()));
-    run_cli(&cli()?.0, &["portfolio", &path.to_string_lossy()], progress).map(Some)
+    run_cli(&cli()?.0, &["portfolio", &path.to_string_lossy(), "--replace"], progress).map(Some)
 }
 
 /// Removes GitFolio. With the bundled gitfolio, `gitfolio uninstall` first (its hooks, the daily sync,
@@ -746,8 +744,8 @@ mod tests {
 
     #[test]
     fn versions() {
-        assert!(["0.8.0", "0.8.1-dev", "0.10.0", "1.0.0", "dev"].iter().all(|v| new_enough(v)));
-        assert!(!["0.7.2", "0.5.9", "0.0.1"].iter().any(|v| new_enough(v)));
+        assert!(["0.9.0", "0.9.1-dev", "0.10.0", "1.0.0", "dev"].iter().all(|v| new_enough(v)));
+        assert!(!["0.8.1", "0.5.9", "0.0.1"].iter().any(|v| new_enough(v)));
     }
 
     // The setup opens by itself only for one not set up: never again for a user set up long ago whose status fails,
@@ -817,19 +815,19 @@ mod tests {
         fs::remove_file(&at).unwrap();
 
         // One installed on its own is never linked over or unlinked, and is used when new enough.
-        let mine = fake(&local, r#"{"version":"0.8.0","bundled":false}"#);
+        let mine = fake(&local, r#"{"version":"0.9.0","bundled":false}"#);
         link(&own, &at).unwrap();
         unlink(&own, &at).unwrap();
         assert!(!fs::symlink_metadata(&at).unwrap().file_type().is_symlink());
         assert_eq!(find_cli(&own, &dirs).unwrap(), (mine.clone(), false));
 
         // First found wins, as in the hooks: an old one there must be updated, not passed over.
-        fake(&brew, r#"{"version":"0.7.2","bundled":false}"#);
+        fake(&brew, r#"{"version":"0.8.1","bundled":false}"#);
         let err = find_cli(&own, &dirs).unwrap_err();
-        assert!(err.contains("is 0.7.2") && err.contains("0.8.0 or newer"), "{err}");
+        assert!(err.contains("is 0.8.1") && err.contains("0.9.0 or newer"), "{err}");
         fake(&brew, "GitFolio 0.5.0");
         let err = find_cli(&own, &dirs).unwrap_err();
-        assert!(err.contains("older than 0.6.0") && err.contains("0.8.0 or newer"), "{err}");
+        assert!(err.contains("older than 0.6.0") && err.contains("0.9.0 or newer"), "{err}");
 
         fs::remove_dir_all(&tmp).unwrap();
     }
