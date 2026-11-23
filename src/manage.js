@@ -413,6 +413,23 @@ async function overview(main) {
           iconButton(ICONS.close, t("Remove…"), panel("remove", async () => confirmRemove(r, box, close))))),
       el("tr", "more", Object.assign(el("td", "", box), { colSpan: 6 })));
   }
+  // Repositories with the user's commits that gitfolio found in the folders searched before, not collected yet
+  // (status --json newRepositories, looked for once a day; none from a GitFolio CLI before it): each collected,
+  // or ignored so that it is no longer offered. Nothing is added by itself.
+  const newMsg = el("p", "");
+  const found = (s.newRepositories ?? []).map((r) => el("div", "item",
+    el("div", "grow", el("strong", "", r.name), " ",
+      el("span", "dim", [t("{n} commits", { n: r.ownCommits }), r.lastCommit && t("last {date}", { date: r.lastCommit }), home(r.path)].filter(Boolean).join(" · "))),
+    el("div", "item-actions",
+      button(t("Ignore"), () => act(newMsg, () => gitfolio("ignore", r.path), () => go("overview"))),
+      button(t("Add"), () => act(newMsg, async () => {
+        progress(t("Collecting {name}…", { name: r.name }));
+        try {
+          await gitfolio("add", r.path);
+        } finally {
+          progress();
+        }
+      }, () => go("overview"))))));
   main.replaceChildren(
     el("header", "", el("h1", "", t("Overview")), el("div", "row",
       // A sync's outcome under the state's lines, read again after it (not read: the outcome whole, its own
@@ -423,6 +440,8 @@ async function overview(main) {
       })), iconButton(ICONS.refresh, t("Refresh"), () => go("overview")))),
     state,
     result,
+    found.length ? el("div", "", el("h2", "", t("New repositories with your commits ({n})", { n: found.length })),
+      el("div", "scroll", ...found), newMsg) : "",
     el("header", "repos-head", el("h2", "", t("Repositories ({n})", { n: s.repositories.length })),
       iconButton(ICONS.plus, t("Add repositories…"), () => adding.replaceChildren(finder(() => go("overview"))))),
     table,

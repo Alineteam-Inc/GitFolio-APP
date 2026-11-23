@@ -306,7 +306,7 @@ fn allowed(args: &[String]) -> bool {
         Some("portfolio") => args.len() == 1,
         Some(c) => [
             "logout", "whoami", "add", "remove", "scan", "sync", "status", "stats", "stack", "export", "deps", "config",
-            "history", "email", "schedule", "version", "git", "work",
+            "history", "email", "schedule", "version", "git", "work", "ignore",
         ]
         .contains(&c),
         None => false,
@@ -761,7 +761,7 @@ mod tests {
     #[test]
     fn allows_only_what_windows_need() {
         let args = |s: &str| s.split(' ').map(String::from).collect::<Vec<_>>();
-        assert!(["status", "work", "work --from 2026", "portfolio", "init --policy", "login --email a@b.c", "login --github --signup", "email github"].iter().all(|a| allowed(&args(a))));
+        assert!(["status", "work", "work --from 2026", "portfolio", "init --policy", "login --email a@b.c", "login --github --signup", "email github", "ignore /c/app"].iter().all(|a| allowed(&args(a))));
         // no file written where a page says, no hook or MCP run, no update or uninstall behind the app's back
         assert!(!["portfolio /tmp/x.md", "portfolio --from x.md", "hook pre-push", "mcp", "update", "uninstall", "init", "login"].iter().any(|a| allowed(&args(a))));
     }
