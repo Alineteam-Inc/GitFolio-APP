@@ -165,6 +165,8 @@ const REMEDIES = {
   noGit: ["git is needed and was not found on this computer.", "Set up", "setup"],
   // From lib.rs: an old gitfolio installed on its own is in use; the app brings it up to date itself (updateCli).
   cliTooOld: ["The GitFolio CLI installed on this computer is too old for GitFolio.", "Update GitFolio CLI", "update-cli"],
+  // Its update failed (Homebrew's, or the install script's download): gitfolio's words end with a command to type.
+  updateFailed: ["The GitFolio CLI installed on this computer could not be updated. Check the internet connection and try again, or update it where it was installed from (Homebrew, or the install script)."],
   // GitFolio called gitfolio wrong: its words are a command's usage, for no user.
   usage: ["Something went wrong in GitFolio. Please try again, or restart it."],
 };
