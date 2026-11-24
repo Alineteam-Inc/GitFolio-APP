@@ -263,6 +263,10 @@ function artPixels(title, scale) {
 
 const SCORES = ["agility", "stability", "contribution", "adaptability", "consistency"];
 const title = (k) => k[0].toUpperCase() + k.slice(1); // "agility" → "Agility", the English of t
+// The main position (dominantPosition) in words, the English of t: aline.team sends its code alone. One it does
+// not name here shows as its code.
+const POSITIONS = { BACKEND: "Backend", FRONTEND: "Frontend", FULLSTACK: "Full stack", MOBILE: "Mobile", ML: "Machine learning",
+  DATA: "Data", GAME: "Game", EMBEDDED: "Embedded" };
 
 // gitfolio stats --json: the developer type, its five scores and the same with AI.
 function drawStats({ type: d, saved, fetchedAt }) {
@@ -270,7 +274,7 @@ function drawStats({ type: d, saved, fetchedAt }) {
   return [
     el("div", "type", drawArt(d.devTypeTitle, 5), el("div", "",
       el("h1", "", d.devTypeTitle),
-      el("p", "dim type-ai", t("{position} · with AI {type}", { position: d.dominantPosition ?? "-", type: d.devTypeTitleAi ?? "-" }), drawArt(d.devTypeTitleAi, 2)))),
+      el("p", "dim type-ai", t("{position} · with AI {type}", { position: d.dominantPosition ? t(POSITIONS[d.dominantPosition] ?? d.dominantPosition) : "-", type: d.devTypeTitleAi ?? "-" }), drawArt(d.devTypeTitleAi, 2)))),
     el("p", "", d.devTypeDescription ?? ""),
     el("p", "dim", d.devTypeHashTags ?? ""),
     el("h2", "", t("Scores, out of 100")),
