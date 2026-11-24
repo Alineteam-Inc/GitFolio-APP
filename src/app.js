@@ -273,7 +273,7 @@ function drawStats({ type: d, saved, fetchedAt }) {
       el("p", "dim type-ai", t("{position} · with AI {type}", { position: d.dominantPosition ?? "-", type: d.devTypeTitleAi ?? "-" }), drawArt(d.devTypeTitleAi, 2)))),
     el("p", "", d.devTypeDescription ?? ""),
     el("p", "dim", d.devTypeHashTags ?? ""),
-    el("h2", "", t("Scores")),
+    el("h2", "", t("Scores, out of 100")),
     ...SCORES.map((k) => {
       const v = d[k + "Stat"], ai = d[k + "StatAi"];
       const fill = el("div", "");
